@@ -919,7 +919,7 @@
     // Загрузка задач из Supabase
     async function loadTasks() {
       const { data: tasks, error } = await supabase
-        .from('wb_tasks')
+        .from('tasks')
         .select('*');
       
       if (error) {
@@ -1233,7 +1233,7 @@
         
         // Обновляем задачу в Supabase
         await supabase
-          .from('wb_tasks')
+          .from('tasks')
           .update({ status: newStatus })
           .eq('id', id);
         
@@ -1259,7 +1259,7 @@
       
       // Добавляем задачу в Supabase
       const { data: createdTask, error } = await supabase
-        .from('wb_tasks')
+        .from('tasks')
         .insert(newTask)
         .select();
       
@@ -1319,7 +1319,7 @@
       
       // Обновляем задачу в Supabase
       await supabase
-        .from('wb_tasks')
+        .from('tasks')
         .update({
           title: it.title,
           assignee: it.assignee,
@@ -1411,7 +1411,7 @@
           };
           
           const { data: createdTask, error } = await supabase
-            .from('wb_tasks')
+            .from('tasks')
             .insert(newTask)
             .select();
           
@@ -1445,7 +1445,7 @@
         .on('postgres_changes', {
           event: '*',
           schema: 'public',
-          table: 'wb_tasks'
+          table: 'tasks'
         }, async (payload) => {
           console.log('Change received:', payload);
           await loadTasks();
