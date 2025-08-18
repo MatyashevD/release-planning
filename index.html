@@ -8,7 +8,6 @@
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     :root{
-      /* Основные цвета темы */
       --bg:#0f1226;
       --panel:#161a36;
       --panel-2:#1b2046;
@@ -26,19 +25,16 @@
       --xl: 22px;
       --xxl: 28px;
       
-      /* Цвета из дизайн-системы - Primary */
-      --primary-bg-default: #A73AFD;          /* Основной фон */
-      --primary-bg-hovered: #9625FC;          /* При наведении */
-      --primary-bg-pressed: #8500FC;          /* При нажатии */
-      --primary-content-default: #FFFFFF;     /* Основной текст */
-      --primary-content-disabled: #D1D1E0;    /* Текст неактивной кнопки */
-      --primary-bg-disabled: #F6F6F9;         /* Фон неактивной кнопки */
+      --primary-bg-default: #A73AFD;
+      --primary-bg-hovered: #9625FC;
+      --primary-bg-pressed: #8500FC;
+      --primary-content-default: #FFFFFF;
+      --primary-content-disabled: #D1D1E0;
+      --primary-bg-disabled: #F6F6F9;
       
-      /* Secondary */
-      --secondary-content-default: #FFFFFF;   /* Вторичный текст */
-      --secondary-content-disabled: #D1D1E0;  /* Неактивный вторичный текст */
+      --secondary-content-default: #FFFFFF;
+      --secondary-content-disabled: #D1D1E0;
       
-      /* Search */
       --search-bg-default: #3A3050;
       --search-bg-hover: #463960;
       --search-bg-pressed: #524370;
@@ -53,7 +49,6 @@
       --muted:#555;
       --accent:#3366ff;
       
-      /* Light theme colors */
       --primary-bg-default: #A73AFD;
       --primary-bg-hovered: #9625FC;
       --primary-bg-pressed: #8500FC;
@@ -98,7 +93,6 @@
       flex:1;
     }
     
-    /* Стили для кнопок */
     button{
       font-size:var(--large);
       border-radius:8px;
@@ -142,7 +136,6 @@
       color:var(--secondary-content-disabled);
     }
     
-    /* Стили для поиска */
     #search {
       font-size:var(--large);
       border-radius:8px;
@@ -171,7 +164,6 @@
       color:rgba(167, 58, 253, 0.7);
     }
     
-    /* Остальные элементы */
     select{
       font-size:var(--large);
       border-radius:8px;
@@ -284,7 +276,6 @@
       color:var(--muted);
     }
 
-    /* Modal */
     .modal{
       position:fixed;
       top:0;
@@ -315,7 +306,6 @@
       font-size:20px;
     }
     
-    /* Стили для релиз-календаря */
     .release-timeline {
       display:flex;
       gap:20px;
@@ -392,7 +382,6 @@
       margin-bottom:10px;
     }
     
-    /* Input в датах */
     .dates input {
       background: var(--panel-2);
       color: var(--text);
@@ -417,7 +406,6 @@
       margin-right: 10px;
     }
     
-    /* Стили для вкладок */
     .view-tabs {
       display: flex;
       gap: 10px;
@@ -439,7 +427,6 @@
       border-bottom: 3px solid var(--primary-bg-default);
     }
     
-    /* Стили для бэклога */
     #backlogView {
       display: none;
       padding: 20px;
@@ -531,7 +518,6 @@
       cursor: pointer;
     }
     
-    /* Цвета статусов */
     .status-ready { background: var(--low); color: #000; }
     .status-dev { background: var(--accent); }
     .status-review { background: var(--med); color: #000; }
@@ -546,7 +532,6 @@
       color: var(--muted);
     }
     
-    /* Лоадер */
     .loader {
       border: 4px solid rgba(255,255,255,0.3);
       border-radius: 50%;
@@ -590,13 +575,11 @@
     <button id="logoutBtn" class="secondary" style="display:none;">Logout</button>
   </div>
 
-  <!-- Вкладки для переключения видов -->
   <div class="view-tabs">
     <div class="view-tab active" data-view="kanban">Kanban Board</div>
     <div class="view-tab" data-view="backlog">Backlog Update</div>
   </div>
 
-  <!-- Основное представление -->
   <div id="kanbanView">
     <div id="dashboard">
       <div class="release-timeline">
@@ -636,12 +619,10 @@
     <main id="board" class="board"></main>
   </div>
 
-  <!-- Представление бэклога -->
   <div id="backlogView"></div>
 
   <div class="footer">Drag cards between statuses. Click card to edit. Bugs are highlighted in red.</div>
 
-  <!-- Модальное окно задачи -->
   <div id="modal" class="modal" style="display:none;">
     <div class="modal-content">
       <h3>Edit Task</h3>
@@ -664,7 +645,6 @@
     </div>
   </div>
   
-  <!-- Модальное окно входа с формой -->
   <div id="loginModal" class="modal" style="display:block;">
     <div class="modal-content">
       <h3>Login to Release Manager</h3>
@@ -683,11 +663,9 @@
 
   <script>
   (function(){
-    // Конфигурация Supabase
     const SUPABASE_URL = "https://nfixznxrpiobbstrqvdw.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5maXh6bnhycGlvYmJzdHJxdmR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1MjA1MDgsImV4cCI6MjA3MTA5NjUwOH0.bTCzAPdX5mDVl8AtbZeefsSFqlPo7c_zebKimn_mCsY";
     
-    // Инициализация Supabase
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
         flowType: 'pkce',
@@ -707,7 +685,6 @@
       {id:'released', label:'Released'}
     ];
 
-    // Структура данных
     let data = {
       releases: {},
       currentRelease: ""
@@ -717,7 +694,6 @@
     let editingId = null;
     let currentUser = null;
 
-    // Сбор элементов DOM
     const els = {
       board: document.getElementById('board'),
       search: document.getElementById('search'),
@@ -761,7 +737,7 @@
       loginForm: document.getElementById('loginForm')
     };
 
-    // ==================== АУТЕНТИФИКАЦИЯ ====================
+    // Аутентификация
     async function checkSession() {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
@@ -780,20 +756,22 @@
     }
 
     function initEventHandlers() {
-      // Обработчики для кнопок входа/регистрации
-      if (els.loginBtn) els.loginBtn.addEventListener('click', login);
-      if (els.signupBtn) els.signupBtn.addEventListener('click', signup);
-      if (els.logoutBtn) els.logoutBtn.addEventListener('click', logout);
+      els.loginBtn.addEventListener('click', login);
+      els.signupBtn.addEventListener('click', signup);
+      els.logoutBtn.addEventListener('click', logout);
       
-      // Обработчик Enter в форме
-      if (els.loginForm) {
-        els.loginForm.addEventListener('submit', (e) => {
+      els.loginForm.addEventListener('submit', (e) => {
+        e.preventDefault();
+        login();
+      });
+      
+      els.loginPassword.addEventListener('keypress', (e) => {
+        if (e.key === 'Enter') {
           e.preventDefault();
           login();
-        });
-      }
+        }
+      });
       
-      // Обработчик для вкладок
       document.querySelectorAll('.view-tab').forEach(tab => {
         tab.addEventListener('click', () => {
           const view = tab.dataset.view;
@@ -801,10 +779,7 @@
         });
       });
       
-      // Обработчик для кнопки добавления задач
-      if (els.addBtn) {
-        els.addBtn.addEventListener('click', addItem);
-      }
+      els.addBtn.addEventListener('click', addItem);
     }
 
     async function login() {
@@ -859,7 +834,6 @@
         if (error) throw error;
         
         if (data.user) {
-          // Автоматически входим после успешной регистрации
           currentUser = data.user;
           els.loginModal.style.display = 'none';
           els.logoutBtn.style.display = 'block';
@@ -886,30 +860,25 @@
     }
 
     function toggleLoginLoader(show) {
-      if (els.loginLoader) els.loginLoader.style.display = show ? 'block' : 'none';
-      if (els.loginBtn) els.loginBtn.disabled = show;
-      if (els.signupBtn) els.signupBtn.disabled = show;
+      els.loginLoader.style.display = show ? 'block' : 'none';
+      els.loginBtn.disabled = show;
+      els.signupBtn.disabled = show;
     }
 
     function showLoginMessage(message) {
-      if (els.loginMessage) {
-        els.loginMessage.textContent = message;
-        setTimeout(() => { els.loginMessage.textContent = ''; }, 5000);
-      }
+      els.loginMessage.textContent = message;
+      setTimeout(() => { els.loginMessage.textContent = ''; }, 5000);
     }
 
-    // ==================== ОСНОВНЫЕ ФУНКЦИИ ====================
+    // Основные функции
     async function initApp() {
       await loadReleases();
       initReleases();
       render();
       setupRealtime();
-      
-      // По умолчанию показываем Kanban
       switchView('kanban');
     }
 
-    // Загрузка релизов из Supabase
     async function loadReleases() {
       const { data: releases, error } = await supabase
         .from('releases')
@@ -933,16 +902,13 @@
         });
       }
       
-      // Загрузка задач для всех релизов
       await loadTasks();
       
-      // Установка текущего релиза
       if (Object.keys(data.releases).length > 0) {
         data.currentRelease = Object.keys(data.releases)[0];
       }
     }
 
-    // Загрузка задач из Supabase
     async function loadTasks() {
       const { data: tasks, error } = await supabase
         .from('tasks')
@@ -953,15 +919,12 @@
         return;
       }
       
-      // Сброс задач
       Object.values(data.releases).forEach(release => {
         release.items = [];
       });
       
-      // Распределение задач по релизам
       if (tasks) {
         tasks.forEach(task => {
-          // Нормализация тегов
           if (task.tags && !Array.isArray(task.tags)) {
             task.tags = [task.tags];
           } else if (!task.tags) {
@@ -970,7 +933,6 @@
           
           const release = Object.values(data.releases).find(r => r.id === task.release_id);
           if (release) {
-            // Добавляем версию релиза в задачу
             release.items.push({
               ...task,
               release: task.release_id,
@@ -981,7 +943,6 @@
       }
     }
 
-    // Инициализация релизов в UI
     function initReleases() {
       els.filterRelease.innerHTML = '<option value="">Select Release</option>';
       Object.keys(data.releases).forEach(release => {
@@ -994,7 +955,6 @@
         els.filterRelease.appendChild(option);
       });
       
-      // Обновляем даты для текущего релиза
       const current = data.releases[data.currentRelease];
       if (current) {
         els.releaseDate.value = current.releaseDate || "";
@@ -1002,7 +962,6 @@
       }
     }
 
-    // Обработчики дат
     els.releaseDate.onchange = async () => {
       const releaseVersion = data.currentRelease;
       const release = data.releases[releaseVersion];
@@ -1033,18 +992,15 @@
       render();
     };
 
-    // Обработчик смены релиза
     els.filterRelease.onchange = () => {
       data.currentRelease = els.filterRelease.value;
       render();
     };
 
-    // Добавление нового релиза
     els.addReleaseBtn.addEventListener('click', async () => {
       const version = prompt("Введите версию релиза (например, 1.1.0):");
       if (version) {
         if (!data.releases[version]) {
-          // Добавляем релиз в Supabase
           const { data: newRelease, error } = await supabase
             .from('releases')
             .insert({
@@ -1059,7 +1015,6 @@
             return;
           }
           
-          // Добавляем релиз локально
           if (newRelease && newRelease.length > 0) {
             data.releases[version] = {
               id: newRelease[0].id,
@@ -1079,7 +1034,6 @@
       }
     });
 
-    // Рендер доски
     function render(){
       if (!data.currentRelease || !data.releases[data.currentRelease]) {
         els.board.innerHTML = '<div class="no-tasks">No releases found</div>';
@@ -1092,7 +1046,6 @@
       const currentRelease = data.releases[data.currentRelease];
       const items = currentRelease.items || [];
       
-      // Гарантируем отрисовку всех статусов
       STATUS_ORDER.forEach(s => {
         const col = document.createElement('div');
         col.className = 'column';
@@ -1114,12 +1067,10 @@
       renderReleaseTimeline();
     }
 
-    // Рендер графиков
     function renderCharts(){
       const currentRelease = data.releases[data.currentRelease];
       const items = currentRelease.items || [];
       
-      // График прогресса по статусам
       const counts = STATUS_ORDER.map(s => 
         items.filter(x => x.status === s.id).length
       );
@@ -1135,12 +1086,12 @@
             label: 'Задачи',
             data: counts,
             backgroundColor: [
-              '#6bc4a4', // Ready to Dev
-              '#7aa2ff', // В разработке
-              '#ffd166', // Review/QA
-              '#f77f00', // Тестирование
-              '#9d4edd', // Готово к релизу
-              '#2a9d8f'  // Released
+              '#6bc4a4',
+              '#7aa2ff',
+              '#ffd166',
+              '#f77f00',
+              '#9d4edd',
+              '#2a9d8f'
             ]
           }]
         },
@@ -1151,15 +1102,12 @@
       });
     }
 
-    // Рендер таймлайна релиза
     function renderReleaseTimeline(){
       const currentRelease = data.releases[data.currentRelease];
       
-      // Обновляем отображение дат
       els.releaseDateDisplay.textContent = currentRelease.releaseDate || "Не установлена";
       els.storeDateDisplay.textContent = currentRelease.storeDate || "Не установлена";
       
-      // Рассчитываем количество дней до событий
       const today = new Date();
       today.setHours(0,0,0,0);
       
@@ -1173,7 +1121,6 @@
           (diffDays > 14 ? "days-normal" : 
            diffDays > 3 ? "days-warning" : "days-critical");
         
-        // Прогресс до релиза (30 дней = 100%)
         const daysTotal = 30;
         const daysPassed = Math.min(Math.max(0, daysTotal - diffDays), daysTotal);
         els.releaseProgress.style.width = `${(daysPassed / daysTotal) * 100}%`;
@@ -1189,14 +1136,12 @@
           (diffDays > 14 ? "days-normal" : 
            diffDays > 3 ? "days-warning" : "days-critical");
         
-        // Прогресс до отправки в Store
         const daysTotal = 30;
         const daysPassed = Math.min(Math.max(0, daysTotal - diffDays), daysTotal);
         els.storeProgress.style.width = `${(daysPassed / daysTotal) * 100}%`;
       }
     }
 
-    // Получение задач по статусу
     function getItems(status, items){
       const q = els.search.value.toLowerCase();
       return items.filter(x => x.status === status).filter(x => {
@@ -1212,7 +1157,6 @@
       });
     }
 
-    // Создание карточки задачи
     function cardEl(it){
       const el = document.createElement('div');
       el.className = 'card';
@@ -1236,8 +1180,6 @@
         'Critical': 'prio-critical'
       }[it.priority || 'Low'];
       
-      // Используем версию релиза вместо ID
-      // Исправление: гарантируем что tags - массив
       const tags = Array.isArray(it.tags) ? it.tags : [];
       
       el.innerHTML = `
@@ -1254,7 +1196,6 @@
       return el;
     }
 
-    // Обработка перетаскивания
     async function onDrop(e){
       e.preventDefault();
       const id = e.dataTransfer.getData('text/plain');
@@ -1265,7 +1206,6 @@
         const newStatus = e.currentTarget.dataset.status;
         it.status = newStatus;
         
-        // Обновляем задачу в Supabase
         await supabase
           .from('tasks')
           .update({ status: newStatus })
@@ -1275,17 +1215,14 @@
       }
     }
 
-    // Добавление новой задачи
     async function addItem(){
       try {
-        // Проверка аутентификации
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (!user || userError) {
           alert("Please login first");
           return;
         }
         
-        // Проверка выбранного релиза
         if (!data.currentRelease) {
           alert("Please select a release first");
           return;
@@ -1297,7 +1234,6 @@
           return;
         }
         
-        // Создаем задачу с user_id
         const newTask = {
           title: "New Task",
           release_id: release.id,
@@ -1305,11 +1241,10 @@
           assignee: "",
           priority: "Low",
           description: "",
-          tags: [], // Инициализируем как пустой массив
+          tags: [],
           user_id: user.id
         };
         
-        // Отправляем в Supabase
         const { data: createdTask, error } = await supabase
           .from('tasks')
           .insert(newTask)
@@ -1317,14 +1252,12 @@
         
         if (error) throw error;
         
-        // Добавляем задачу локально с версией релиза
         release.items.push({
           ...createdTask[0],
           release: createdTask[0].release_id,
           releaseVersion: release.version
         });
         
-        // Открываем редактор
         openEditor(createdTask[0].id);
         
       } catch (error) {
@@ -1333,9 +1266,7 @@
       }
     }
 
-    // Открытие редактора задачи
     function openEditor(id){
-      // Показываем модальное окно
       els.modal.style.display = 'flex';
       
       const currentRelease = data.releases[data.currentRelease];
@@ -1346,8 +1277,6 @@
       
       editingId = id;
       
-      // Заполняем форму данными
-      // Исправление: гарантируем что tags - массив перед join
       const tags = Array.isArray(it.tags) ? it.tags : [];
       
       els.mTitle.value = it.title;
@@ -1359,7 +1288,6 @@
       els.mTags.value = tags.join(", ");
     }
 
-    // Сохранение задачи
     els.mSave.onclick = async () => {
       const currentRelease = data.releases[data.currentRelease];
       if (!currentRelease) return;
@@ -1367,7 +1295,6 @@
       const it = currentRelease.items.find(x => x.id == editingId);
       if (!it) return;
       
-      // Обновляем данные задачи
       it.title = els.mTitle.value;
       it.assignee = els.mAssignee.value;
       it.priority = els.mPriority.value;
@@ -1375,7 +1302,6 @@
       it.link = els.mLink.value;
       it.tags = els.mTags.value.split(',').map(x => x.trim()).filter(Boolean);
       
-      // Обновляем задачу в Supabase
       await supabase
         .from('tasks')
         .update({
@@ -1396,7 +1322,6 @@
       els.modal.style.display = 'none';
     };
 
-    // Экспорт в CSV
     els.exportBtn.addEventListener('click', () => {
       const currentRelease = data.releases[data.currentRelease];
       if (!currentRelease) return;
@@ -1425,7 +1350,6 @@
       a.click();
     });
 
-    // Импорт из CSV
     els.importBtn.addEventListener('click', () => els.importFile.click());
     els.importFile.addEventListener('change', async (e) => {
       if (!e.target.files[0]) return;
@@ -1455,7 +1379,6 @@
           }
         }
         
-        // Добавляем задачи в текущий релиз
         for (const item of items) {
           const newTask = {
             title: item.title,
@@ -1488,16 +1411,13 @@
       reader.readAsText(file);
     });
 
-    // Переключение темы
     els.themeBtn.addEventListener('click', () => {
       document.body.classList.toggle('light');
       els.themeBtn.textContent = document.body.classList.contains('light') ? '☀️' : '🌙';
     });
     
-    // Выход из системы
     els.logoutBtn.addEventListener('click', logout);
     
-    // Режим реального времени
     function setupRealtime() {
       const channel = supabase
         .channel('tasks')
@@ -1506,38 +1426,30 @@
           schema: 'public',
           table: 'tasks'
         }, async (payload) => {
-          console.log('Change received:', payload);
           await loadTasks();
           render();
         })
         .subscribe();
     }
     
-    // Переключение между представлениями
     function switchView(viewName) {
-      // Обновляем активные вкладки
       document.querySelectorAll('.view-tab').forEach(tab => {
         tab.classList.toggle('active', tab.dataset.view === viewName);
       });
       
-      // Показываем/скрываем представления
       els.kanbanView.style.display = viewName === 'kanban' ? 'block' : 'none';
       els.backlogView.style.display = viewName === 'backlog' ? 'block' : 'none';
       
-      // Если выбрано представление бэклога - рендерим его
       if (viewName === 'backlog') {
         renderBacklog();
       }
     }
 
-    // Рендер представления бэклога
     async function renderBacklog() {
-      // Перезагружаем данные перед отображением
       await loadReleases();
       
       els.backlogView.innerHTML = '';
       
-      // Сортируем релизы по версии (от новых к старым)
       const sortedReleases = Object.values(data.releases).sort((a, b) => {
         return b.version.localeCompare(a.version);
       });
@@ -1559,12 +1471,10 @@
         
         const tasksList = releaseGroup.querySelector('.tasks-list');
         
-        // Добавляем задачи
         (release.items || []).forEach(task => {
           const taskItem = document.createElement('div');
           taskItem.className = 'task-item';
           
-          // Исправление: гарантируем что tags - массив
           const tags = Array.isArray(task.tags) ? task.tags : [];
           
           taskItem.innerHTML = `
@@ -1591,7 +1501,6 @@
           tasksList.appendChild(taskItem);
         });
         
-        // Если задач нет
         if (!release.items || release.items.length === 0) {
           tasksList.innerHTML = '<div class="no-tasks">No tasks for this release</div>';
         }
@@ -1599,39 +1508,24 @@
         els.backlogView.appendChild(releaseGroup);
       });
       
-      // Добавляем обработчики для селекторов статуса
       document.querySelectorAll('.status-selector').forEach(select => {
         select.addEventListener('change', async function() {
           const taskId = this.dataset.id;
           const newStatus = this.value;
           
-          // Обновляем в Supabase
           await supabase
             .from('tasks')
             .update({ status: newStatus })
             .eq('id', taskId);
           
-          // Перезагружаем данные
           await loadReleases();
-          
-          // Перерисовываем представление
           renderBacklog();
         });
       });
     }
 
-    // Глобальный обработчик ошибок
-    window.addEventListener('error', (event) => {
-      console.error('Global error:', event.error);
-      showLoginMessage(`Application error: ${event.error.message}`);
-    });
-
-    // Проверка сессии при загрузке
     document.addEventListener('DOMContentLoaded', () => {
-      // Инициализация обработчиков
       initEventHandlers();
-      
-      // Проверка сессии пользователя
       checkSession();
     });
   })();
