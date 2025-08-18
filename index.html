@@ -672,10 +672,20 @@
 
   <script>
   (function(){
+    // Конфигурация Supabase (заполняются при деплое)
     const SUPABASE_URL = "SUPABASE_URL_PLACEHOLDER";
     const SUPABASE_KEY = "SUPABASE_KEY_PLACEHOLDER";
-    // Инициализация Supabase
-    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
+    // Инициализация Supabase с настройками аутентификации
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
+      auth: {
+        flowType: 'pkce',
+        autoRefreshToken: true,
+        detectSessionInUrl: true,
+        persistSession: true,
+        storage: localStorage
+      }
+    });
     
     const STATUS_ORDER = [
       {id:'ready', label:'Ready to Dev'},
@@ -696,6 +706,7 @@
     let editingId = null;
     let currentUser = null;
 
+    // Сбор элементов DOM
     const els = {
       board: document.getElementById('board'),
       search: document.getElementById('search'),
@@ -740,56 +751,105 @@
 
     // ==================== АУТЕНТИФИКАЦИЯ ====================
     async function checkSession() {
-      const { data: { session }, error } = await supabase.auth.getSession();
-      if (session) {
-        currentUser = session.user;
-        els.loginModal.style.display = 'none';
-        els.logoutBtn.style.display = 'block';
-        await initApp();
+      try {
+        const { data: { session }, error } = await supabase.auth.getSession();
+        
+        if (error) throw error;
+        if (session) {
+          currentUser = session.user;
+          els.loginModal.style.display = 'none';
+          els.logoutBtn.style.display = 'block';
+          await initApp();
+        }
+      } catch (error) {
+        console.error('Session error:', error);
+        showLoginMessage('Session error: ' + error.message);
+      } finally {
+        // Всегда инициализируем обработчики после проверки сессии
+        initEventHandlers();
+      }
+    }
+
+    function initEventHandlers() {
+      // Проверяем существование элементов перед назначением обработчиков
+      if (els.loginBtn) els.loginBtn.addEventListener('click', login);
+      if (els.signupBtn) els.signupBtn.addEventListener('click', signup);
+      if (els.logoutBtn) els.logoutBtn.addEventListener('click', logout);
+      
+      if (els.loginPassword) {
+        els.loginPassword.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') login();
+        });
       }
     }
 
     async function login() {
-      toggleLoginLoader(true);
-      const email = els.loginEmail.value;
-      const password = els.loginPassword.value;
-      
-      const { data, error } = await supabase.auth.signInWithPassword({
-        email,
-        password
-      });
-      
-      if (error) {
-        showLoginMessage(error.message);
+      try {
+        toggleLoginLoader(true);
+        const email = els.loginEmail.value;
+        const password = els.loginPassword.value;
+        
+        if (!email || !password) {
+          showLoginMessage('Please enter email and password');
+          return;
+        }
+        
+        const { data, error } = await supabase.auth.signInWithPassword({
+          email,
+          password
+        });
+        
+        if (error) throw error;
+        
+        currentUser = data.user;
+        els.loginModal.style.display = 'none';
+        els.logoutBtn.style.display = 'block';
+        await initApp();
+      } catch (error) {
+        console.error('Login error:', error);
+        showLoginMessage(error.message || 'Login failed');
+      } finally {
         toggleLoginLoader(false);
-        return;
       }
-      
-      currentUser = data.user;
-      els.loginModal.style.display = 'none';
-      els.logoutBtn.style.display = 'block';
-      await initApp();
-      toggleLoginLoader(false);
     }
 
     async function signup() {
-      toggleLoginLoader(true);
-      const email = els.loginEmail.value;
-      const password = els.loginPassword.value;
-      
-      const { data, error } = await supabase.auth.signUp({
-        email,
-        password
-      });
-      
-      if (error) {
-        showLoginMessage(error.message);
+      try {
+        toggleLoginLoader(true);
+        const email = els.loginEmail.value;
+        const password = els.loginPassword.value;
+        
+        if (!email || !password) {
+          showLoginMessage('Please enter email and password');
+          return;
+        }
+        
+        const { data, error } = await supabase.auth.signUp({
+          email,
+          password,
+          options: {
+            emailRedirectTo: window.location.href
+          }
+        });
+        
+        if (error) throw error;
+        
+        if (data.user) {
+          // Автоматически входим после успешной регистрации
+          currentUser = data.user;
+          els.loginModal.style.display = 'none';
+          els.logoutBtn.style.display = 'block';
+          await initApp();
+          showLoginMessage('Registration successful!');
+        } else {
+          showLoginMessage('Check your email for confirmation!');
+        }
+      } catch (error) {
+        console.error('Signup error:', error);
+        showLoginMessage(error.message || 'Registration failed');
+      } finally {
         toggleLoginLoader(false);
-        return;
       }
-      
-      showLoginMessage('Check your email for confirmation!');
-      toggleLoginLoader(false);
     }
 
     async function logout() {
@@ -802,14 +862,16 @@
     }
 
     function toggleLoginLoader(show) {
-      els.loginLoader.style.display = show ? 'block' : 'none';
-      els.loginBtn.disabled = show;
-      els.signupBtn.disabled = show;
+      if (els.loginLoader) els.loginLoader.style.display = show ? 'block' : 'none';
+      if (els.loginBtn) els.loginBtn.disabled = show;
+      if (els.signupBtn) els.signupBtn.disabled = show;
     }
 
     function showLoginMessage(message) {
-      els.loginMessage.textContent = message;
-      setTimeout(() => { els.loginMessage.textContent = ''; }, 5000);
+      if (els.loginMessage) {
+        els.loginMessage.textContent = message;
+        setTimeout(() => { els.loginMessage.textContent = ''; }, 5000);
+      }
     }
 
     // ==================== ОСНОВНЫЕ ФУНКЦИИ ====================
@@ -832,14 +894,16 @@
       }
       
       data.releases = {};
-      releases.forEach(release => {
-        data.releases[release.version] = {
-          id: release.id,
-          releaseDate: release.release_date,
-          storeDate: release.store_date,
-          items: []
-        };
-      });
+      if (releases) {
+        releases.forEach(release => {
+          data.releases[release.version] = {
+            id: release.id,
+            releaseDate: release.release_date,
+            storeDate: release.store_date,
+            items: []
+          };
+        });
+      }
       
       // Загрузка задач для всех релизов
       await loadTasks();
@@ -867,22 +931,24 @@
       });
       
       // Распределение задач по релизам
-      tasks.forEach(task => {
-        const release = Object.values(data.releases).find(r => r.id === task.release_id);
-        if (release) {
-          release.items.push({
-            id: task.id,
-            title: task.title,
-            status: task.status,
-            assignee: task.assignee,
-            priority: task.priority,
-            link: task.link,
-            description: task.description,
-            tags: task.tags || [],
-            release: task.release_id
-          });
-        }
-      });
+      if (tasks) {
+        tasks.forEach(task => {
+          const release = Object.values(data.releases).find(r => r.id === task.release_id);
+          if (release) {
+            release.items.push({
+              id: task.id,
+              title: task.title,
+              status: task.status,
+              assignee: task.assignee,
+              priority: task.priority,
+              link: task.link,
+              description: task.description,
+              tags: task.tags || [],
+              release: task.release_id
+            });
+          }
+        });
+      }
     }
 
     // Инициализация релизов в UI
@@ -910,6 +976,8 @@
     els.releaseDate.onchange = async () => {
       const releaseVersion = data.currentRelease;
       const release = data.releases[releaseVersion];
+      if (!release) return;
+      
       release.releaseDate = els.releaseDate.value;
       
       await supabase
@@ -923,6 +991,8 @@
     els.storeDate.onchange = async () => {
       const releaseVersion = data.currentRelease;
       const release = data.releases[releaseVersion];
+      if (!release) return;
+      
       release.storeDate = els.storeDate.value;
       
       await supabase
@@ -960,16 +1030,18 @@
           }
           
           // Добавляем релиз локально
-          data.releases[version] = {
-            id: newRelease[0].id,
-            releaseDate: null,
-            storeDate: null,
-            items: []
-          };
-          
-          data.currentRelease = version;
-          initReleases();
-          render();
+          if (newRelease && newRelease.length > 0) {
+            data.releases[version] = {
+              id: newRelease[0].id,
+              releaseDate: null,
+              storeDate: null,
+              items: []
+            };
+            
+            data.currentRelease = version;
+            initReleases();
+            render();
+          }
         } else {
           alert("Релиз с такой версией уже существует!");
         }
@@ -1195,13 +1267,15 @@
       }
       
       // Добавляем задачу локально
-      release.items.push({
-        ...createdTask[0],
-        release: createdTask[0].release_id
-      });
-      
-      // Открываем редактор
-      openEditor(createdTask[0].id);
+      if (createdTask && createdTask.length > 0) {
+        release.items.push({
+          ...createdTask[0],
+          release: createdTask[0].release_id
+        });
+        
+        // Открываем редактор
+        openEditor(createdTask[0].id);
+      }
     }
 
     // Открытие редактора задачи
@@ -1339,7 +1413,7 @@
             .insert(newTask)
             .select();
           
-          if (!error) {
+          if (!error && createdTask && createdTask.length > 0) {
             currentRelease.items.push({
               ...createdTask[0],
               release: createdTask[0].release_id
@@ -1378,32 +1452,16 @@
         .subscribe();
     }
     
-    // Обработчики входа
-    els.loginBtn.addEventListener('click', login);
-    els.signupBtn.addEventListener('click', signup);
-    
-    // Обработчики переключения вкладок
-    document.querySelectorAll('.view-tab').forEach(tab => {
-      tab.addEventListener('click', () => {
-        document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
-        tab.classList.add('active');
-        
-        if(tab.dataset.view === 'kanban') {
-          els.kanbanView.style.display = 'block';
-          els.backlogView.style.display = 'none';
-        } else {
-          els.kanbanView.style.display = 'none';
-          els.backlogView.style.display = 'block';
-          renderBacklog();
-        }
-      });
+    // Глобальный обработчик ошибок
+    window.addEventListener('error', (event) => {
+      console.error('Global error:', event.error);
+      showLoginMessage(`Application error: ${event.error.message}`);
     });
 
     // Проверка сессии при загрузке
-    checkSession();
-    
-    // Инициализация
-    if (currentUser) initApp();
+    document.addEventListener('DOMContentLoaded', () => {
+      checkSession();
+    });
   })();
   </script>
 </body>
