@@ -785,6 +785,12 @@
       }
     }
 
+      if (els.addBtn) {
+        els.addBtn.addEventListener('click', addItem);
+        console.log("Add button handler attached");
+      }
+    }
+    
     async function login() {
       try {
         toggleLoginLoader(true);
