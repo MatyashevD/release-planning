@@ -1,0 +1,1207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>WB Drive Release Plan</title>
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <style>
+    :root{
+      /* Основные цвета темы */
+      --bg:#0f1226;
+      --panel:#161a36;
+      --panel-2:#1b2046;
+      --text:#f4f6ff;
+      --muted:#c0c6f0;
+      --accent:#7aa2ff;
+      --bad:#ff5e5e;
+      --low:#6bc4a4;
+      --med:#ffd166;
+      --high:#f77f00;
+      --critical:#ef476f;
+      --shadow: 0 8px 30px rgba(0,0,0,.35);
+      --radius: 18px;
+      --large: 18px;
+      --xl: 22px;
+      --xxl: 28px;
+      
+      /* Цвета из дизайн-системы - Primary */
+      --primary-bg-default: #A73AFD;          /* Основной фон */
+      --primary-bg-hovered: #9625FC;          /* При наведении */
+      --primary-bg-pressed: #8500FC;          /* При нажатии */
+      --primary-content-default: #FFFFFF;     /* Основной текст */
+      --primary-content-disabled: #D1D1E0;    /* Текст неактивной кнопки */
+      --primary-bg-disabled: #F6F6F9;         /* Фон неактивной кнопки */
+      
+      /* Secondary */
+      --secondary-content-default: #FFFFFF;   /* Вторичный текст */
+      --secondary-content-disabled: #D1D1E0;  /* Неактивный вторичный текст */
+      
+      /* Search */
+      --search-bg-default: #3A3050;
+      --search-bg-hover: #463960;
+      --search-bg-pressed: #524370;
+      --search-text: #B879FC;
+    }
+
+    body.light{
+      --bg:#f5f7ff;
+      --panel:#ffffff;
+      --panel-2:#f0f0f8;
+      --text:#111;
+      --muted:#555;
+      --accent:#3366ff;
+      
+      /* Light theme colors */
+      --primary-bg-default: #A73AFD;
+      --primary-bg-hovered: #9625FC;
+      --primary-bg-pressed: #8500FC;
+      --primary-content-default: #FFFFFF;
+      --primary-content-disabled: #D1D1E0;
+      --primary-bg-disabled: #F6F6F9;
+      
+      --secondary-content-default: #111;
+      --secondary-content-disabled: #D1D1E0;
+      
+      --search-bg-default: #F8E7FF;
+      --search-bg-hover: #E5C9FF;
+      --search-bg-pressed: #D7B2FF;
+      --search-text: #A73AFD;
+    }
+
+    *{box-sizing:border-box;}
+    body{
+      margin:0;
+      background:linear-gradient(180deg,var(--bg),#0b0e20);
+      color:var(--text);
+      font-family:Inter,system-ui;
+      transition:.3s background,.3s color;
+      min-height:100vh;
+    }
+
+    .topbar{
+      display:flex;
+      gap:12px;
+      align-items:center;
+      padding:12px 18px;
+      background:rgba(10,13,34,.8);
+      position:sticky;
+      top:0;
+      z-index:10;
+      flex-wrap:wrap;
+    }
+    body.light .topbar{background:#eaeaff;}
+    .app-title{
+      font-size:var(--xxl);
+      font-weight:800;
+      flex:1;
+    }
+    
+    /* Стили для кнопок */
+    button{
+      font-size:var(--large);
+      border-radius:8px;
+      border:none;
+      padding:8px 16px;
+      cursor:pointer;
+      transition:background 0.2s, transform 0.1s;
+    }
+    
+    button.primary{
+      background:var(--primary-bg-default);
+      color:var(--primary-content-default);
+    }
+    
+    button.primary:hover{
+      background:var(--primary-bg-hovered);
+    }
+    
+    button.primary:active{
+      background:var(--primary-bg-pressed);
+      transform:translateY(1px);
+    }
+    
+    button.primary:disabled{
+      background:var(--primary-bg-disabled);
+      color:var(--primary-content-disabled);
+      cursor:not-allowed;
+    }
+    
+    button.secondary{
+      background:var(--panel-2);
+      color:var(--secondary-content-default);
+      border:1px solid rgba(255,255,255,.1);
+    }
+    
+    body.light button.secondary{
+      border:1px solid #ccc;
+    }
+    
+    button.secondary:disabled{
+      color:var(--secondary-content-disabled);
+    }
+    
+    /* Стили для поиска */
+    #search {
+      font-size:var(--large);
+      border-radius:8px;
+      border:1px solid transparent;
+      background:var(--search-bg-default);
+      color:var(--search-text);
+      padding:8px 16px;
+      transition:background 0.2s, transform 0.1s;
+    }
+    
+    #search:hover {
+      background:var(--search-bg-hover);
+    }
+    
+    #search:focus {
+      background:var(--search-bg-pressed);
+      outline:none;
+      transform:scale(1.01);
+    }
+    
+    #search::placeholder {
+      color:rgba(184, 121, 252, 0.7);
+    }
+    
+    body.light #search::placeholder {
+      color:rgba(167, 58, 253, 0.7);
+    }
+    
+    /* Остальные элементы */
+    select{
+      font-size:var(--large);
+      border-radius:8px;
+      border:1px solid rgba(255,255,255,.1);
+      background:var(--panel-2);
+      color:var(--text);
+      padding:8px 16px;
+    }
+    
+    body.light select{
+      border:1px solid #ccc;
+    }
+
+    .board{
+      display:grid;
+      grid-template-columns:repeat(6,minmax(250px,1fr));
+      gap:12px;
+      padding:12px;
+    }
+    
+    .column{
+      background:var(--panel);
+      border-radius:var(--radius);
+      display:flex;
+      flex-direction:column;
+      transition:.3s background;
+    }
+    
+    .col-header{
+      padding:10px;
+      font-weight:700;
+      font-size:var(--xl);
+      border-bottom:1px solid rgba(255,255,255,.1);
+    }
+
+    .dropzone{
+      padding:10px;
+      display:flex;
+      flex-direction:column;
+      gap:12px;
+      min-height:50px;
+    }
+
+    .card{
+      background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03));
+      border:1px solid rgba(255,255,255,.1);
+      border-radius:12px;
+      padding:10px;
+      cursor:grab;
+      transition:.3s background;
+    }
+    
+    .card.dragging{
+      opacity:.6;
+    }
+    
+    .priority{
+      width:12px;
+      height:12px;
+      border-radius:50%;
+      margin-right:6px;
+      display:inline-block;
+    }
+    
+    .prio-low{background:var(--low);} 
+    .prio-med{background:var(--med);} 
+    .prio-high{background:var(--high);} 
+    .prio-critical{background:var(--critical);} 
+    
+    .bug{
+      border:2px solid var(--bad)!important;
+    }
+    
+    .tags{
+      display:flex;
+      gap:6px;
+      flex-wrap:wrap;
+      margin-top:4px;
+    }
+    
+    .tag{
+      background:rgba(255,255,255,.1);
+      border-radius:6px;
+      padding:2px 6px;
+      font-size:14px;
+    }
+
+    .footer{
+      padding:10px;
+      font-size:14px;
+      color:var(--muted);
+    }
+    
+    #dashboard{
+      background:var(--panel);
+      margin:12px;
+      border-radius:var(--radius);
+      padding:12px;
+    }
+    
+    .dates{
+      display:flex;
+      gap:20px;
+      align-items:center;
+    }
+    
+    #releaseInfo{
+      margin-top:8px;
+      font-size:15px;
+      color:var(--muted);
+    }
+
+    /* Modal */
+    .modal{
+      position:fixed;
+      top:0;
+      left:0;
+      right:0;
+      bottom:0;
+      background:rgba(0,0,0,.6);
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      z-index:100;
+    }
+    
+    .modal-content{
+      background:var(--panel);
+      padding:20px;
+      border-radius:12px;
+      max-width:400px;
+      width:100%;
+      box-shadow:var(--shadow);
+      display:flex;
+      flex-direction:column;
+      gap:10px;
+    }
+    
+    .modal-content h3{
+      margin:0 0 10px;
+      font-size:20px;
+    }
+    
+    /* Стили для релиз-календаря */
+    .release-timeline {
+      display:flex;
+      gap:20px;
+      margin-top:15px;
+    }
+    
+    .release-milestone {
+      flex:1;
+      background:var(--panel-2);
+      border-radius:var(--radius);
+      padding:15px;
+      position:relative;
+    }
+    
+    .milestone-header {
+      font-weight:bold;
+      margin-bottom:10px;
+      display:flex;
+      justify-content:space-between;
+    }
+    
+    .milestone-date {
+      font-size:18px;
+      margin:5px 0;
+    }
+    
+    .milestone-days {
+      font-size:14px;
+      margin-top:5px;
+      padding:3px 8px;
+      border-radius:12px;
+      display:inline-block;
+    }
+    
+    .days-normal {background:var(--low);}
+    .days-warning {background:var(--high);}
+    .days-critical {background:var(--critical);}
+    
+    .progress-bar {
+      height:8px;
+      background:rgba(255,255,255,0.1);
+      border-radius:4px;
+      margin-top:10px;
+      overflow:hidden;
+    }
+    
+    .progress-fill {
+      height:100%;
+      background:var(--primary-bg-default);
+      border-radius:4px;
+    }
+    
+    .timeline-connector {
+      position:absolute;
+      top:40%;
+      right:-20px;
+      width:20px;
+      height:2px;
+      background:var(--muted);
+    }
+    
+    .release-chart {
+      margin-top:20px;
+    }
+    
+    .chart-container {
+      background:var(--panel-2);
+      border-radius:var(--radius);
+      padding:15px;
+    }
+    
+    .chart-title {
+      font-weight:bold;
+      margin-bottom:10px;
+    }
+    
+    /* Input в датах */
+    .dates input {
+      background: var(--panel-2);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,.1);
+      border-radius: 8px;
+      padding: 6px 10px;
+    }
+    
+    body.light .dates input {
+      border: 1px solid #ccc;
+    }
+    
+    .release-controls {
+      display: flex;
+      gap: 10px;
+      align-items: center;
+    }
+    
+    .release-name {
+      font-weight: bold;
+      font-size: 20px;
+      margin-right: 10px;
+    }
+    
+    /* Стили для вкладок */
+    .view-tabs {
+      display: flex;
+      gap: 10px;
+      padding: 10px 20px 0;
+      margin-bottom: 15px;
+    }
+    
+    .view-tab {
+      padding: 10px 20px;
+      background: var(--panel-2);
+      border-radius: 8px 8px 0 0;
+      cursor: pointer;
+      transition: all 0.3s;
+      border-bottom: 3px solid transparent;
+    }
+    
+    .view-tab.active {
+      background: var(--panel);
+      border-bottom: 3px solid var(--primary-bg-default);
+    }
+    
+    /* Стили для бэклога */
+    #backlogView {
+      display: none;
+      padding: 20px;
+    }
+    
+    .release-group {
+      background: var(--panel);
+      border-radius: var(--radius);
+      margin-bottom: 25px;
+      padding: 20px;
+      box-shadow: var(--shadow);
+    }
+    
+    .release-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding-bottom: 15px;
+      border-bottom: 2px solid rgba(255,255,255,0.1);
+      margin-bottom: 15px;
+    }
+    
+    .release-title {
+      font-size: 22px;
+      font-weight: bold;
+      color: var(--accent);
+    }
+    
+    .release-dates {
+      display: flex;
+      gap: 20px;
+      font-size: 16px;
+      color: var(--muted);
+    }
+    
+    .task-item {
+      padding: 15px;
+      background: var(--panel-2);
+      border-radius: 10px;
+      margin-bottom: 12px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      transition: transform 0.2s;
+    }
+    
+    .task-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 4px 10px rgba(0,0,0,0.2);
+    }
+    
+    .task-info {
+      flex: 1;
+    }
+    
+    .task-title {
+      font-weight: 600;
+      font-size: 18px;
+      margin-bottom: 8px;
+    }
+    
+    .task-link {
+      color: var(--accent);
+      text-decoration: none;
+      font-size: 15px;
+      display: inline-block;
+      margin-top: 5px;
+    }
+    
+    .task-link:hover {
+      text-decoration: underline;
+    }
+    
+    .task-status {
+      padding: 6px 15px;
+      border-radius: 20px;
+      font-size: 15px;
+      font-weight: 500;
+      min-width: 140px;
+      text-align: center;
+    }
+    
+    /* Цвета статусов */
+    .status-ready { background: var(--low); color: #000; }
+    .status-dev { background: var(--accent); }
+    .status-review { background: var(--med); color: #000; }
+    .status-test { background: var(--high); }
+    .status-rfr { background: #9d4edd; }
+    .status-released { background: #2a9d8f; }
+    
+    .no-tasks {
+      text-align: center;
+      padding: 30px;
+      font-size: 18px;
+      color: var(--muted);
+    }
+  </style>
+</head>
+<body>
+  <div class="topbar">
+    <div class="app-title">WB Drive Release Plan</div>
+    <input id="search" placeholder="Search or filter (title, tag, release)"/>
+    
+    <div class="release-controls">
+      <span class="release-name">Release:</span>
+      <select id="filterRelease">
+        <option value="">Select Release</option>
+      </select>
+      <button id="addReleaseBtn" class="primary">+ Add Release</button>
+    </div>
+    
+    <div class="dates">
+      📅 Плановый релиз: <input type="date" id="releaseDate"/>
+      📦 Отправка в Store: <input type="date" id="storeDate"/>
+    </div>
+    
+    <button id="addBtn" class="primary">+ Add Item</button>
+    <button id="exportBtn" class="primary">Export CSV</button>
+    <input type="file" id="importFile" style="display:none"/>
+    <button id="importBtn" class="primary">Import CSV</button>
+    <button id="themeBtn" class="secondary">🌙</button>
+  </div>
+
+  <!-- Вкладки для переключения видов -->
+  <div class="view-tabs">
+    <div class="view-tab active" data-view="kanban">Kanban Board</div>
+    <div class="view-tab" data-view="backlog">Backlog Update</div>
+  </div>
+
+  <!-- Основное представление -->
+  <div id="kanbanView">
+    <div id="dashboard">
+      <div class="release-timeline">
+        <div class="release-milestone">
+          <div class="milestone-header">
+            <span>Отправка в Store</span>
+            <span class="milestone-days" id="storeDays"></span>
+          </div>
+          <div class="milestone-date" id="storeDateDisplay"></div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="storeProgress"></div>
+          </div>
+        </div>
+        
+        <div class="release-milestone">
+          <div class="milestone-header">
+            <span>Плановый релиз</span>
+            <span class="milestone-days" id="releaseDays"></span>
+          </div>
+          <div class="milestone-date" id="releaseDateDisplay"></div>
+          <div class="progress-bar">
+            <div class="progress-fill" id="releaseProgress"></div>
+          </div>
+        </div>
+      </div>
+      
+      <div class="release-chart">
+        <div class="chart-container">
+          <div class="chart-title">Прогресс релиза</div>
+          <canvas id="progressChart"></canvas>
+        </div>
+      </div>
+      
+      <div id="releaseInfo"></div>
+    </div>
+
+    <main id="board" class="board"></main>
+  </div>
+
+  <!-- Представление бэклога -->
+  <div id="backlogView"></div>
+
+  <div class="footer">Drag cards between statuses. Click card to edit. Bugs are highlighted in red.</div>
+
+  <div id="modal" class="modal" style="display:none;">
+    <div class="modal-content">
+      <h3>Edit Task</h3>
+      <input id="mTitle" placeholder="Title"/>
+      <input id="mRelease" placeholder="Release version"/>
+      <input id="mAssignee" placeholder="Assignee"/>
+      <select id="mPriority">
+        <option>Low</option>
+        <option>Medium</option>
+        <option>High</option>
+        <option>Critical</option>
+      </select>
+      <input id="mLink" placeholder="Link (Jira/Task URL)"/>
+      <textarea id="mDescription" placeholder="Description"></textarea>
+      <input id="mTags" placeholder="Tags (comma separated)"/>
+      <div style="display:flex;gap:10px;justify-content:flex-end;">
+        <button id="mSave" class="primary">Save</button>
+        <button id="mCancel" class="secondary">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <script>
+  (function(){
+    const STATUS_ORDER = [
+      {id:'ready', label:'Ready to Dev'},
+      {id:'dev', label:'В разработке'},
+      {id:'review', label:'Review/QA'},
+      {id:'test', label:'Тестирование'},
+      {id:'rfr', label:'Готово к релизу'},
+      {id:'released', label:'Released'}
+    ];
+
+    // Структура данных
+    let data = load() || {
+      releases: {
+        "1.0.0": {
+          releaseDate: "",
+          storeDate: "",
+          items: []
+        }
+      },
+      currentRelease: "1.0.0"
+    };
+    
+    let chart;
+    let editingId = null;
+
+    const els = {
+      board: document.getElementById('board'),
+      search: document.getElementById('search'),
+      filterRelease: document.getElementById('filterRelease'),
+      addBtn: document.getElementById('addBtn'),
+      addReleaseBtn: document.getElementById('addReleaseBtn'),
+      exportBtn: document.getElementById('exportBtn'),
+      importBtn: document.getElementById('importBtn'),
+      importFile: document.getElementById('importFile'),
+      themeBtn: document.getElementById('themeBtn'),
+      progressChart: document.getElementById('progressChart'),
+      releaseDate: document.getElementById('releaseDate'),
+      storeDate: document.getElementById('storeDate'),
+      releaseInfo: document.getElementById('releaseInfo'),
+      modal: document.getElementById('modal'),
+      mTitle: document.getElementById('mTitle'),
+      mRelease: document.getElementById('mRelease'),
+      mAssignee: document.getElementById('mAssignee'),
+      mPriority: document.getElementById('mPriority'),
+      mDescription: document.getElementById('mDescription'),
+      mLink: document.getElementById('mLink'),
+      mTags: document.getElementById('mTags'),
+      mSave: document.getElementById('mSave'),
+      mCancel: document.getElementById('mCancel'),
+      releaseDateDisplay: document.getElementById('releaseDateDisplay'),
+      storeDateDisplay: document.getElementById('storeDateDisplay'),
+      releaseDays: document.getElementById('releaseDays'),
+      storeDays: document.getElementById('storeDays'),
+      releaseProgress: document.getElementById('releaseProgress'),
+      storeProgress: document.getElementById('storeProgress'),
+      kanbanView: document.getElementById('kanbanView'),
+      backlogView: document.getElementById('backlogView')
+    };
+
+    // Инициализация релизов
+    function initReleases() {
+      els.filterRelease.innerHTML = '';
+      Object.keys(data.releases).forEach(release => {
+        const option = document.createElement('option');
+        option.value = release;
+        option.textContent = release;
+        if (release === data.currentRelease) {
+          option.selected = true;
+        }
+        els.filterRelease.appendChild(option);
+      });
+      
+      // Обновляем даты для текущего релиза
+      const current = data.releases[data.currentRelease];
+      els.releaseDate.value = current.releaseDate || "";
+      els.storeDate.value = current.storeDate || "";
+    }
+
+    // Обработчики дат
+    els.releaseDate.onchange = () => {
+      data.releases[data.currentRelease].releaseDate = els.releaseDate.value;
+      save();
+      render();
+    };
+    
+    els.storeDate.onchange = () => {
+      data.releases[data.currentRelease].storeDate = els.storeDate.value;
+      save();
+      render();
+    };
+
+    // Обработчик смены релиза
+    els.filterRelease.onchange = () => {
+      data.currentRelease = els.filterRelease.value;
+      save();
+      render();
+    };
+
+    // Добавление нового релиза
+    els.addReleaseBtn.addEventListener('click', () => {
+      const version = prompt("Введите версию релиза (например, 1.1.0):");
+      if (version) {
+        if (!data.releases[version]) {
+          data.releases[version] = {
+            releaseDate: "",
+            storeDate: "",
+            items: []
+          };
+          data.currentRelease = version;
+          save();
+          render();
+        } else {
+          alert("Релиз с такой версией уже существует!");
+        }
+      }
+    });
+
+    function render(){
+      initReleases();
+      els.board.innerHTML='';
+      
+      const currentRelease = data.releases[data.currentRelease];
+      const items = currentRelease.items || [];
+      
+      STATUS_ORDER.forEach(s => {
+        const col = document.createElement('div');
+        col.className = 'column';
+        col.innerHTML = `<div class="col-header">${s.label}</div>`;
+        
+        const dz = document.createElement('div');
+        dz.className = 'dropzone';
+        dz.dataset.status = s.id;
+        dz.addEventListener('dragover', e => e.preventDefault());
+        dz.addEventListener('drop', onDrop);
+        
+        col.appendChild(dz);
+        els.board.appendChild(col);
+        
+        getItems(s.id, items).forEach(it => dz.appendChild(cardEl(it)));
+      });
+      
+      renderCharts();
+      renderReleaseTimeline();
+    }
+
+    function renderReleaseTimeline(){
+      const currentRelease = data.releases[data.currentRelease];
+      
+      // Обновляем отображение дат
+      els.releaseDateDisplay.textContent = currentRelease.releaseDate || "Не установлена";
+      els.storeDateDisplay.textContent = currentRelease.storeDate || "Не установлена";
+      
+      // Рассчитываем количество дней до событий
+      const today = new Date();
+      today.setHours(0,0,0,0);
+      
+      if(currentRelease.releaseDate){
+        const releaseDate = new Date(currentRelease.releaseDate);
+        const diffTime = releaseDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        
+        els.releaseDays.textContent = `${diffDays} дней`;
+        els.releaseDays.className = "milestone-days " + 
+          (diffDays > 14 ? "days-normal" : 
+           diffDays > 3 ? "days-warning" : "days-critical");
+        
+        // Прогресс до релиза (30 дней = 100%)
+        const daysTotal = 30;
+        const daysPassed = Math.min(Math.max(0, daysTotal - diffDays), daysTotal);
+        els.releaseProgress.style.width = `${(daysPassed / daysTotal) * 100}%`;
+      }
+      
+      if(currentRelease.storeDate){
+        const storeDate = new Date(currentRelease.storeDate);
+        const diffTime = storeDate - today;
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24)); 
+        
+        els.storeDays.textContent = `${diffDays} дней`;
+        els.storeDays.className = "milestone-days " + 
+          (diffDays > 14 ? "days-normal" : 
+           diffDays > 3 ? "days-warning" : "days-critical");
+        
+        // Прогресс до отправки в Store
+        const daysTotal = 30;
+        const daysPassed = Math.min(Math.max(0, daysTotal - diffDays), daysTotal);
+        els.storeProgress.style.width = `${(daysPassed / daysTotal) * 100}%`;
+      }
+    }
+
+    function renderCharts(){
+      const currentRelease = data.releases[data.currentRelease];
+      const items = currentRelease.items || [];
+      
+      // График прогресса по статусам
+      const counts = STATUS_ORDER.map(s => 
+        items.filter(x => x.status === s.id).length
+      );
+      
+      if(chart) chart.destroy();
+      
+      chart = new Chart(els.progressChart, {
+        type: 'bar',
+        data: {
+          labels: STATUS_ORDER.map(s => s.label),
+          datasets: [{
+            label: 'Задачи',
+            data: counts,
+            backgroundColor: [
+              '#6bc4a4', // Ready to Dev
+              '#7aa2ff', // В разработке
+              '#ffd166', // Review/QA
+              '#f77f00', // Тестирование
+              '#9d4edd', // Готово к релизу
+              '#2a9d8f'  // Released
+            ]
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    function getItems(status, items){
+      const q = els.search.value.toLowerCase();
+      return items.filter(x => x.status === status).filter(x => {
+        const hay = [
+          x.title,
+          x.description,
+          x.assignee,
+          x.release,
+          (x.tags || []).join(' ')
+        ].join(' ').toLowerCase();
+        
+        return !q || hay.includes(q);
+      });
+    }
+
+    function cardEl(it){
+      const el = document.createElement('div');
+      el.className = 'card';
+      el.draggable = true;
+      el.dataset.id = it.id;
+      
+      if(/bug/i.test(it.title)) el.classList.add('bug');
+      
+      el.addEventListener('dragstart', e => {
+        el.classList.add('dragging');
+        e.dataTransfer.setData('text/plain', it.id);
+      });
+      
+      el.addEventListener('dragend', () => el.classList.remove('dragging'));
+      el.addEventListener('click', () => openEditor(it.id));
+      
+      const prioClass = {
+        'Low': 'prio-low',
+        'Medium': 'prio-med',
+        'High': 'prio-high',
+        'Critical': 'prio-critical'
+      }[it.priority || 'Low'];
+      
+      el.innerHTML = `
+        <div>
+          <span class="priority ${prioClass}"></span>
+          <b>${it.title}</b> 
+          ${it.link ? `<a href="${it.link}" target="_blank">🔗</a>` : ''}
+        </div>
+        <div>${it.assignee || ''} | Release: ${it.release || ''}</div>
+        ${it.description ? `<div>${it.description}</div>` : ''}
+        ${it.tags ? `<div class="tags">${it.tags.map(t => `<span class=tag>${t}</span>`).join('')}</div>` : ''}
+      `;
+      
+      return el;
+    }
+
+    function onDrop(e){
+      e.preventDefault();
+      const id = e.dataTransfer.getData('text/plain');
+      const currentRelease = data.releases[data.currentRelease];
+      const it = currentRelease.items.find(x => x.id == id);
+      
+      if(it){
+        it.status = e.currentTarget.dataset.status;
+        save();
+        render();
+      }
+    }
+
+    function addItem(){
+      // Создаем объект задачи, но не добавляем в данные сразу
+      const newItem = {
+        id: Date.now() + "-" + Math.random().toString(36).substring(2, 9),
+        title: "New Task",
+        release: data.currentRelease,
+        link: "",
+        tags: [],
+        status: 'ready',
+        assignee: "",
+        priority: "Low",
+        description: ""
+      };
+      
+      // Открываем редактор, но не сохраняем задачу пока не нажали Save
+      openEditor(newItem.id, newItem);
+    }
+
+    function openEditor(id, newItem = null){
+      const currentRelease = data.releases[data.currentRelease];
+      let it = newItem;
+      
+      // Если это не новая задача, ищем существующую
+      if(!it){
+        it = currentRelease.items.find(x => x.id == id);
+        if(!it) return;
+      }
+      
+      editingId = id;
+      
+      els.mTitle.value = it.title;
+      els.mRelease.value = it.release || data.currentRelease;
+      els.mAssignee.value = it.assignee || "";
+      els.mPriority.value = it.priority || "Low";
+      els.mDescription.value = it.description || "";
+      els.mLink.value = it.link || "";
+      els.mTags.value = (it.tags || []).join(", ");
+      
+      els.modal.style.display = 'flex';
+    }
+
+    els.mSave.onclick = () => {
+      const currentRelease = data.releases[data.currentRelease];
+      let it = currentRelease.items.find(x => x.id == editingId);
+      
+      if(!it){
+        // Если это новая задача, создаем ее
+        it = {
+          id: editingId,
+          title: "",
+          release: data.currentRelease,
+          link: "",
+          tags: [],
+          status: 'ready',
+          assignee: "",
+          priority: "Low",
+          description: ""
+        };
+        currentRelease.items.push(it);
+      }
+      
+      // Обновляем данные задачи
+      it.title = els.mTitle.value;
+      it.release = els.mRelease.value;
+      it.assignee = els.mAssignee.value;
+      it.priority = els.mPriority.value;
+      it.description = els.mDescription.value;
+      it.link = els.mLink.value;
+      it.tags = els.mTags.value.split(',').map(x => x.trim()).filter(Boolean);
+      
+      save();
+      render();
+      els.modal.style.display = 'none';
+    };
+
+    els.mCancel.onclick = () => {
+      els.modal.style.display = 'none';
+    };
+
+    function exportCSV(){
+      const currentRelease = data.releases[data.currentRelease];
+      const rows = [["title","release","status","assignee","priority","link","tags","description"]];
+      
+      currentRelease.items.forEach(it => 
+        rows.push([
+          it.title,
+          it.release,
+          it.status,
+          it.assignee || '',
+          it.priority || '',
+          it.link || '',
+          (it.tags || []).join(';'),
+          it.description || ''
+        ])
+      );
+      
+      const csv = rows.map(r => r.map(v => '"' + (v || '').replace(/"/g, '""') + '"').join(",")).join("\n");
+      const blob = new Blob([csv], {type: 'text/csv'});
+      const a = document.createElement('a');
+      a.href = URL.createObjectURL(blob);
+      a.download = `release_${data.currentRelease}_plan.csv`;
+      a.click();
+    }
+
+    function importCSV(file){
+      const reader = new FileReader();
+      reader.onload = e => {
+        const lines = e.target.result.split(/\r?\n/).filter(Boolean);
+        if(lines.length < 2) return;
+        
+        const hdr = lines.shift().split(',').map(x => x.replace(/^"|"$/g, '').trim());
+        const items = [];
+        
+        for(const line of lines){
+          try{
+            const cols = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g).map(c => c.replace(/^"|"$/g, ''));
+            const obj = {};
+            hdr.forEach((h, i) => obj[h] = cols[i] || '');
+            obj.tags = (obj.tags || '').split(';').filter(Boolean);
+            items.push(obj);
+          }catch(e){
+            console.error('Error parsing CSV line:', line);
+          }
+        }
+        
+        // Добавляем задачи в текущий релиз
+        const currentRelease = data.releases[data.currentRelease];
+        currentRelease.items = items.map(it => ({
+          ...it,
+          id: Date.now() + "-" + Math.random().toString(36).substring(2, 9)
+        }));
+        
+        save();
+        render();
+      };
+      reader.readAsText(file);
+    }
+
+    function save(){
+      localStorage.setItem('wbdrive_plan_v6', JSON.stringify(data));
+    }
+    
+    function load(){
+      try{
+        return JSON.parse(localStorage.getItem('wbdrive_plan_v6')) || {
+          releases: {
+            "1.0.0": {
+              releaseDate: "",
+              storeDate: "",
+              items: []
+            }
+          },
+          currentRelease: "1.0.0"
+        };
+      }catch(e){
+        return null;
+      }
+    }
+
+    function toggleTheme(){
+      document.body.classList.toggle('light');
+      els.themeBtn.textContent = document.body.classList.contains('light') ? '☀️' : '🌙';
+    }
+    
+    // Рендер бэклога (ИСПРАВЛЕННАЯ ВЕРСИЯ)
+    function renderBacklog() {
+      els.backlogView.innerHTML = '';
+      
+      // Соберем все релизы, у которых есть задачи
+      const releasesWithTasks = {};
+      
+      // Пройдемся по всем релизам
+      for (const version in data.releases) {
+        const release = data.releases[version];
+        if (release.items && release.items.length > 0) {
+          // Для каждого релиза создадим запись в releasesWithTasks
+          if (!releasesWithTasks[version]) {
+            releasesWithTasks[version] = {
+              releaseDate: release.releaseDate,
+              storeDate: release.storeDate,
+              items: []
+            };
+          }
+          
+          // Добавим задачи релиза
+          release.items.forEach(task => {
+            releasesWithTasks[version].items.push(task);
+          });
+        }
+      }
+      
+      // Сортируем релизы по версии (новые сверху)
+      const sortedReleases = Object.keys(releasesWithTasks)
+        .sort((a, b) => b.localeCompare(a, undefined, {numeric: true}));
+      
+      // Если нет задач ни в одном релизе
+      if (sortedReleases.length === 0) {
+        els.backlogView.innerHTML = '<div class="no-tasks">No tasks in any release</div>';
+        return;
+      }
+      
+      // Отрисовываем каждый релиз с задачами
+      sortedReleases.forEach(releaseVersion => {
+        const release = releasesWithTasks[releaseVersion];
+        
+        const group = document.createElement('div');
+        group.className = 'release-group';
+        
+        // Заголовок релиза
+        const header = document.createElement('div');
+        header.className = 'release-header';
+        header.innerHTML = `
+          <div class="release-title">Release ${releaseVersion}</div>
+          <div class="release-dates">
+            ${release.releaseDate ? `📅 ${release.releaseDate}` : ''}
+            ${release.storeDate ? ` | 📦 ${release.storeDate}` : ''}
+          </div>
+        `;
+        
+        group.appendChild(header);
+        
+        // Список задач
+        release.items.forEach(task => {
+          const taskEl = document.createElement('div');
+          taskEl.className = 'task-item';
+          
+          // Название статуса
+          const statusObj = STATUS_ORDER.find(s => s.id === task.status) || {label: task.status};
+          
+          taskEl.innerHTML = `
+            <div class="task-info">
+              <div class="task-title">${task.title}</div>
+              ${task.link ? `<a href="${task.link}" target="_blank" class="task-link">${task.link}</a>` : ''}
+            </div>
+            <div class="task-status status-${task.status}">${statusObj.label}</div>
+          `;
+          
+          group.appendChild(taskEl);
+        });
+        
+        els.backlogView.appendChild(group);
+      });
+    }
+    
+    // Обработчики переключения вкладок
+    document.querySelectorAll('.view-tab').forEach(tab => {
+      tab.addEventListener('click', () => {
+        document.querySelectorAll('.view-tab').forEach(t => t.classList.remove('active'));
+        tab.classList.add('active');
+        
+        if(tab.dataset.view === 'kanban') {
+          els.kanbanView.style.display = 'block';
+          els.backlogView.style.display = 'none';
+        } else {
+          els.kanbanView.style.display = 'none';
+          els.backlogView.style.display = 'block';
+          renderBacklog();
+        }
+      });
+    });
+
+    // Инициализация обработчиков событий
+    els.addBtn.addEventListener('click', addItem);
+    els.exportBtn.addEventListener('click', exportCSV);
+    els.importBtn.addEventListener('click', () => els.importFile.click());
+    els.importFile.addEventListener('change', (e) => {
+      if(e.target.files[0]) importCSV(e.target.files[0]);
+    });
+    els.themeBtn.addEventListener('click', toggleTheme);
+    els.search.addEventListener('input', render);
+    document.addEventListener('keydown', (e) => {
+      if(e.key === 'Escape') els.modal.style.display = 'none';
+    });
+    
+    // Первоначальный рендеринг
+    render();
+  })();
+  </script>
+</body>
+</html>
