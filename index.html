@@ -887,7 +887,7 @@
     // Загрузка релизов из Supabase
     async function loadReleases() {
       const { data: releases, error } = await supabase
-        .from('wb_releases')
+        .from('releases')
         .select('*');
       
       if (error) {
@@ -983,7 +983,7 @@
       release.releaseDate = els.releaseDate.value;
       
       await supabase
-        .from('wb_releases')
+        .from('releases')
         .update({ release_date: release.releaseDate })
         .eq('version', releaseVersion);
       
@@ -998,7 +998,7 @@
       release.storeDate = els.storeDate.value;
       
       await supabase
-        .from('wb_releases')
+        .from('releases')
         .update({ store_date: release.storeDate })
         .eq('version', releaseVersion);
       
@@ -1018,7 +1018,7 @@
         if (!data.releases[version]) {
           // Добавляем релиз в Supabase
           const { data: newRelease, error } = await supabase
-            .from('wb_releases')
+            .from('releases')
             .insert({
               version: version,
               release_date: null,
