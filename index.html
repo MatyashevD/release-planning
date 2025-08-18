@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>WB Drive Release Plan</title>
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
     :root{
       /* Основные цвета темы */
@@ -535,6 +536,23 @@
       font-size: 18px;
       color: var(--muted);
     }
+    
+    /* Лоадер */
+    .loader {
+      border: 4px solid rgba(255,255,255,0.3);
+      border-radius: 50%;
+      border-top: 4px solid var(--accent);
+      width: 40px;
+      height: 40px;
+      animation: spin 1s linear infinite;
+      margin: 20px auto;
+      display: none;
+    }
+    
+    @keyframes spin {
+      0% { transform: rotate(0deg); }
+      100% { transform: rotate(360deg); }
+    }
   </style>
 </head>
 <body>
@@ -560,6 +578,7 @@
     <input type="file" id="importFile" style="display:none"/>
     <button id="importBtn" class="primary">Import CSV</button>
     <button id="themeBtn" class="secondary">🌙</button>
+    <button id="logoutBtn" class="secondary" style="display:none;">Logout</button>
   </div>
 
   <!-- Вкладки для переключения видов -->
@@ -613,6 +632,7 @@
 
   <div class="footer">Drag cards between statuses. Click card to edit. Bugs are highlighted in red.</div>
 
+  <!-- Модальное окно задачи -->
   <div id="modal" class="modal" style="display:none;">
     <div class="modal-content">
       <h3>Edit Task</h3>
@@ -634,9 +654,31 @@
       </div>
     </div>
   </div>
+  
+  <!-- Модальное окно входа -->
+  <div id="loginModal" class="modal" style="display:block;">
+    <div class="modal-content">
+      <h3>Login to Release Manager</h3>
+      <input id="loginEmail" type="email" placeholder="Email"/>
+      <input id="loginPassword" type="password" placeholder="Password"/>
+      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px;">
+        <button id="loginBtn" class="primary">Login</button>
+        <button id="signupBtn" class="secondary">Sign Up</button>
+      </div>
+      <div class="loader" id="loginLoader"></div>
+      <div id="loginMessage" style="margin-top:10px;color:var(--bad);"></div>
+    </div>
+  </div>
 
   <script>
   (function(){
+    // Конфигурация Supabase (ЗАМЕНИТЕ НА СВОИ ДАННЫЕ)
+    const SUPABASE_URL = 'https://YOUR_SUPABASE_ID.supabase.co';
+    const SUPABASE_KEY = 'YOUR_SUPABASE_KEY';
+    
+    // Инициализация Supabase
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+    
     const STATUS_ORDER = [
       {id:'ready', label:'Ready to Dev'},
       {id:'dev', label:'В разработке'},
@@ -647,19 +689,14 @@
     ];
 
     // Структура данных
-    let data = load() || {
-      releases: {
-        "1.0.0": {
-          releaseDate: "",
-          storeDate: "",
-          items: []
-        }
-      },
-      currentRelease: "1.0.0"
+    let data = {
+      releases: {},
+      currentRelease: ""
     };
     
     let chart;
     let editingId = null;
+    let currentUser = null;
 
     const els = {
       board: document.getElementById('board'),
@@ -671,6 +708,7 @@
       importBtn: document.getElementById('importBtn'),
       importFile: document.getElementById('importFile'),
       themeBtn: document.getElementById('themeBtn'),
+      logoutBtn: document.getElementById('logoutBtn'),
       progressChart: document.getElementById('progressChart'),
       releaseDate: document.getElementById('releaseDate'),
       storeDate: document.getElementById('storeDate'),
@@ -692,12 +730,166 @@
       releaseProgress: document.getElementById('releaseProgress'),
       storeProgress: document.getElementById('storeProgress'),
       kanbanView: document.getElementById('kanbanView'),
-      backlogView: document.getElementById('backlogView')
+      backlogView: document.getElementById('backlogView'),
+      loginModal: document.getElementById('loginModal'),
+      loginEmail: document.getElementById('loginEmail'),
+      loginPassword: document.getElementById('loginPassword'),
+      loginBtn: document.getElementById('loginBtn'),
+      signupBtn: document.getElementById('signupBtn'),
+      loginLoader: document.getElementById('loginLoader'),
+      loginMessage: document.getElementById('loginMessage')
     };
 
-    // Инициализация релизов
+    // ==================== АУТЕНТИФИКАЦИЯ ====================
+    async function checkSession() {
+      const { data: { session }, error } = await supabase.auth.getSession();
+      if (session) {
+        currentUser = session.user;
+        els.loginModal.style.display = 'none';
+        els.logoutBtn.style.display = 'block';
+        await initApp();
+      }
+    }
+
+    async function login() {
+      toggleLoginLoader(true);
+      const email = els.loginEmail.value;
+      const password = els.loginPassword.value;
+      
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+      
+      if (error) {
+        showLoginMessage(error.message);
+        toggleLoginLoader(false);
+        return;
+      }
+      
+      currentUser = data.user;
+      els.loginModal.style.display = 'none';
+      els.logoutBtn.style.display = 'block';
+      await initApp();
+      toggleLoginLoader(false);
+    }
+
+    async function signup() {
+      toggleLoginLoader(true);
+      const email = els.loginEmail.value;
+      const password = els.loginPassword.value;
+      
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password
+      });
+      
+      if (error) {
+        showLoginMessage(error.message);
+        toggleLoginLoader(false);
+        return;
+      }
+      
+      showLoginMessage('Check your email for confirmation!');
+      toggleLoginLoader(false);
+    }
+
+    async function logout() {
+      await supabase.auth.signOut();
+      currentUser = null;
+      els.logoutBtn.style.display = 'none';
+      els.loginModal.style.display = 'block';
+      data = { releases: {}, currentRelease: "" };
+      render();
+    }
+
+    function toggleLoginLoader(show) {
+      els.loginLoader.style.display = show ? 'block' : 'none';
+      els.loginBtn.disabled = show;
+      els.signupBtn.disabled = show;
+    }
+
+    function showLoginMessage(message) {
+      els.loginMessage.textContent = message;
+      setTimeout(() => { els.loginMessage.textContent = ''; }, 5000);
+    }
+
+    // ==================== ОСНОВНЫЕ ФУНКЦИИ ====================
+    async function initApp() {
+      await loadReleases();
+      initReleases();
+      render();
+      setupRealtime();
+    }
+
+    // Загрузка релизов из Supabase
+    async function loadReleases() {
+      const { data: releases, error } = await supabase
+        .from('wb_releases')
+        .select('*');
+      
+      if (error) {
+        console.error('Error loading releases:', error);
+        return;
+      }
+      
+      data.releases = {};
+      releases.forEach(release => {
+        data.releases[release.version] = {
+          id: release.id,
+          releaseDate: release.release_date,
+          storeDate: release.store_date,
+          items: []
+        };
+      });
+      
+      // Загрузка задач для всех релизов
+      await loadTasks();
+      
+      // Установка текущего релиза
+      if (Object.keys(data.releases).length > 0) {
+        data.currentRelease = Object.keys(data.releases)[0];
+      }
+    }
+
+    // Загрузка задач из Supabase
+    async function loadTasks() {
+      const { data: tasks, error } = await supabase
+        .from('wb_tasks')
+        .select('*');
+      
+      if (error) {
+        console.error('Error loading tasks:', error);
+        return;
+      }
+      
+      // Сброс задач
+      Object.values(data.releases).forEach(release => {
+        release.items = [];
+      });
+      
+      // Распределение задач по релизам
+      tasks.forEach(task => {
+        const release = Object.values(data.releases).find(r => r.id === task.release_id);
+        if (release) {
+          release.items.push({
+            id: task.id,
+            title: task.title,
+            status: task.status,
+            assignee: task.assignee,
+            priority: task.priority,
+            link: task.link,
+            description: task.description,
+            tags: task.tags || [],
+            release: task.release_id
+          });
+        }
+      });
+    }
+
+    // Инициализация релизов в UI
     function initReleases() {
-      els.filterRelease.innerHTML = '';
+      els.filterRelease.innerHTML = '<option value="">Select Release</option>';
       Object.keys(data.releases).forEach(release => {
         const option = document.createElement('option');
         option.value = release;
@@ -710,42 +902,75 @@
       
       // Обновляем даты для текущего релиза
       const current = data.releases[data.currentRelease];
-      els.releaseDate.value = current.releaseDate || "";
-      els.storeDate.value = current.storeDate || "";
+      if (current) {
+        els.releaseDate.value = current.releaseDate || "";
+        els.storeDate.value = current.storeDate || "";
+      }
     }
 
     // Обработчики дат
-    els.releaseDate.onchange = () => {
-      data.releases[data.currentRelease].releaseDate = els.releaseDate.value;
-      save();
+    els.releaseDate.onchange = async () => {
+      const releaseVersion = data.currentRelease;
+      const release = data.releases[releaseVersion];
+      release.releaseDate = els.releaseDate.value;
+      
+      await supabase
+        .from('wb_releases')
+        .update({ release_date: release.releaseDate })
+        .eq('version', releaseVersion);
+      
       render();
     };
     
-    els.storeDate.onchange = () => {
-      data.releases[data.currentRelease].storeDate = els.storeDate.value;
-      save();
+    els.storeDate.onchange = async () => {
+      const releaseVersion = data.currentRelease;
+      const release = data.releases[releaseVersion];
+      release.storeDate = els.storeDate.value;
+      
+      await supabase
+        .from('wb_releases')
+        .update({ store_date: release.storeDate })
+        .eq('version', releaseVersion);
+      
       render();
     };
 
     // Обработчик смены релиза
     els.filterRelease.onchange = () => {
       data.currentRelease = els.filterRelease.value;
-      save();
       render();
     };
 
     // Добавление нового релиза
-    els.addReleaseBtn.addEventListener('click', () => {
+    els.addReleaseBtn.addEventListener('click', async () => {
       const version = prompt("Введите версию релиза (например, 1.1.0):");
       if (version) {
         if (!data.releases[version]) {
+          // Добавляем релиз в Supabase
+          const { data: newRelease, error } = await supabase
+            .from('wb_releases')
+            .insert({
+              version: version,
+              release_date: null,
+              store_date: null
+            })
+            .select();
+          
+          if (error) {
+            alert("Error creating release: " + error.message);
+            return;
+          }
+          
+          // Добавляем релиз локально
           data.releases[version] = {
-            releaseDate: "",
-            storeDate: "",
+            id: newRelease[0].id,
+            releaseDate: null,
+            storeDate: null,
             items: []
           };
+          
           data.currentRelease = version;
-          save();
+          initReleases();
           render();
         } else {
           alert("Релиз с такой версией уже существует!");
@@ -753,7 +978,13 @@
       }
     });
 
+    // Рендер доски
     function render(){
+      if (!data.currentRelease || !data.releases[data.currentRelease]) {
+        els.board.innerHTML = '<div class="no-tasks">No releases found</div>';
+        return;
+      }
+      
       initReleases();
       els.board.innerHTML='';
       
@@ -781,6 +1012,44 @@
       renderReleaseTimeline();
     }
 
+    // Рендер графиков
+    function renderCharts(){
+      const currentRelease = data.releases[data.currentRelease];
+      const items = currentRelease.items || [];
+      
+      // График прогресса по статусам
+      const counts = STATUS_ORDER.map(s => 
+        items.filter(x => x.status === s.id).length
+      );
+      
+      if(chart) chart.destroy();
+      
+      const ctx = els.progressChart.getContext('2d');
+      chart = new Chart(ctx, {
+        type: 'bar',
+        data: {
+          labels: STATUS_ORDER.map(s => s.label),
+          datasets: [{
+            label: 'Задачи',
+            data: counts,
+            backgroundColor: [
+              '#6bc4a4', // Ready to Dev
+              '#7aa2ff', // В разработке
+              '#ffd166', // Review/QA
+              '#f77f00', // Тестирование
+              '#9d4edd', // Готово к релизу
+              '#2a9d8f'  // Released
+            ]
+          }]
+        },
+        options: {
+          plugins: { legend: { display: false } },
+          scales: { y: { beginAtZero: true } }
+        }
+      });
+    }
+
+    // Рендер таймлайна релиза
     function renderReleaseTimeline(){
       const currentRelease = data.releases[data.currentRelease];
       
@@ -825,41 +1094,7 @@
       }
     }
 
-    function renderCharts(){
-      const currentRelease = data.releases[data.currentRelease];
-      const items = currentRelease.items || [];
-      
-      // График прогресса по статусам
-      const counts = STATUS_ORDER.map(s => 
-        items.filter(x => x.status === s.id).length
-      );
-      
-      if(chart) chart.destroy();
-      
-      chart = new Chart(els.progressChart, {
-        type: 'bar',
-        data: {
-          labels: STATUS_ORDER.map(s => s.label),
-          datasets: [{
-            label: 'Задачи',
-            data: counts,
-            backgroundColor: [
-              '#6bc4a4', // Ready to Dev
-              '#7aa2ff', // В разработке
-              '#ffd166', // Review/QA
-              '#f77f00', // Тестирование
-              '#9d4edd', // Готово к релизу
-              '#2a9d8f'  // Released
-            ]
-          }]
-        },
-        options: {
-          plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true } }
-        }
-      });
-    }
-
+    // Получение задач по статусу
     function getItems(status, items){
       const q = els.search.value.toLowerCase();
       return items.filter(x => x.status === status).filter(x => {
@@ -875,6 +1110,7 @@
       });
     }
 
+    // Создание карточки задачи
     function cardEl(it){
       const el = document.createElement('div');
       el.className = 'card';
@@ -912,46 +1148,71 @@
       return el;
     }
 
-    function onDrop(e){
+    // Обработка перетаскивания
+    async function onDrop(e){
       e.preventDefault();
       const id = e.dataTransfer.getData('text/plain');
       const currentRelease = data.releases[data.currentRelease];
       const it = currentRelease.items.find(x => x.id == id);
       
       if(it){
-        it.status = e.currentTarget.dataset.status;
-        save();
+        const newStatus = e.currentTarget.dataset.status;
+        it.status = newStatus;
+        
+        // Обновляем задачу в Supabase
+        await supabase
+          .from('wb_tasks')
+          .update({ status: newStatus })
+          .eq('id', id);
+        
         render();
       }
     }
 
-    function addItem(){
-      // Создаем объект задачи, но не добавляем в данные сразу
-      const newItem = {
-        id: Date.now() + "-" + Math.random().toString(36).substring(2, 9),
+    // Добавление новой задачи
+    async function addItem(){
+      const release = data.releases[data.currentRelease];
+      if (!release) return;
+      
+      // Создаем новую задачу
+      const newTask = {
         title: "New Task",
-        release: data.currentRelease,
-        link: "",
-        tags: [],
+        release_id: release.id,
         status: 'ready',
         assignee: "",
         priority: "Low",
-        description: ""
+        description: "",
+        tags: []
       };
       
-      // Открываем редактор, но не сохраняем задачу пока не нажали Save
-      openEditor(newItem.id, newItem);
+      // Добавляем задачу в Supabase
+      const { data: createdTask, error } = await supabase
+        .from('wb_tasks')
+        .insert(newTask)
+        .select();
+      
+      if (error) {
+        console.error('Error creating task:', error);
+        return;
+      }
+      
+      // Добавляем задачу локально
+      release.items.push({
+        ...createdTask[0],
+        release: createdTask[0].release_id
+      });
+      
+      // Открываем редактор
+      openEditor(createdTask[0].id);
     }
 
-    function openEditor(id, newItem = null){
+    // Открытие редактора задачи
+    function openEditor(id){
       const currentRelease = data.releases[data.currentRelease];
-      let it = newItem;
+      if (!currentRelease) return;
       
-      // Если это не новая задача, ищем существующую
-      if(!it){
-        it = currentRelease.items.find(x => x.id == id);
-        if(!it) return;
-      }
+      const it = currentRelease.items.find(x => x.id == id);
+      if (!it) return;
       
       editingId = id;
       
@@ -966,49 +1227,52 @@
       els.modal.style.display = 'flex';
     }
 
-    els.mSave.onclick = () => {
+    // Сохранение задачи
+    els.mSave.onclick = async () => {
       const currentRelease = data.releases[data.currentRelease];
-      let it = currentRelease.items.find(x => x.id == editingId);
+      if (!currentRelease) return;
       
-      if(!it){
-        // Если это новая задача, создаем ее
-        it = {
-          id: editingId,
-          title: "",
-          release: data.currentRelease,
-          link: "",
-          tags: [],
-          status: 'ready',
-          assignee: "",
-          priority: "Low",
-          description: ""
-        };
-        currentRelease.items.push(it);
-      }
+      const it = currentRelease.items.find(x => x.id == editingId);
+      if (!it) return;
       
       // Обновляем данные задачи
       it.title = els.mTitle.value;
-      it.release = els.mRelease.value;
       it.assignee = els.mAssignee.value;
       it.priority = els.mPriority.value;
       it.description = els.mDescription.value;
       it.link = els.mLink.value;
       it.tags = els.mTags.value.split(',').map(x => x.trim()).filter(Boolean);
       
-      save();
-      render();
+      // Обновляем задачу в Supabase
+      await supabase
+        .from('wb_tasks')
+        .update({
+          title: it.title,
+          assignee: it.assignee,
+          priority: it.priority,
+          description: it.description,
+          link: it.link,
+          tags: it.tags
+        })
+        .eq('id', it.id);
+      
       els.modal.style.display = 'none';
+      render();
     };
 
     els.mCancel.onclick = () => {
       els.modal.style.display = 'none';
     };
 
-    function exportCSV(){
+    // Экспорт в CSV
+    els.exportBtn.addEventListener('click', () => {
       const currentRelease = data.releases[data.currentRelease];
+      if (!currentRelease) return;
+      
+      const items = currentRelease.items || [];
       const rows = [["title","release","status","assignee","priority","link","tags","description"]];
       
-      currentRelease.items.forEach(it => 
+      items.forEach(it => 
         rows.push([
           it.title,
           it.release,
@@ -1027,147 +1291,98 @@
       a.href = URL.createObjectURL(blob);
       a.download = `release_${data.currentRelease}_plan.csv`;
       a.click();
-    }
+    });
 
-    function importCSV(file){
+    // Импорт из CSV
+    els.importBtn.addEventListener('click', () => els.importFile.click());
+    els.importFile.addEventListener('change', async (e) => {
+      if (!e.target.files[0]) return;
+      
+      const file = e.target.files[0];
       const reader = new FileReader();
-      reader.onload = e => {
+      
+      reader.onload = async function(e) {
+        const currentRelease = data.releases[data.currentRelease];
+        if (!currentRelease) return;
+        
         const lines = e.target.result.split(/\r?\n/).filter(Boolean);
-        if(lines.length < 2) return;
+        if (lines.length < 2) return;
         
         const hdr = lines.shift().split(',').map(x => x.replace(/^"|"$/g, '').trim());
         const items = [];
         
-        for(const line of lines){
-          try{
+        for (const line of lines) {
+          try {
             const cols = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g).map(c => c.replace(/^"|"$/g, ''));
             const obj = {};
             hdr.forEach((h, i) => obj[h] = cols[i] || '');
             obj.tags = (obj.tags || '').split(';').filter(Boolean);
             items.push(obj);
-          }catch(e){
+          } catch (e) {
             console.error('Error parsing CSV line:', line);
           }
         }
         
         // Добавляем задачи в текущий релиз
-        const currentRelease = data.releases[data.currentRelease];
-        currentRelease.items = items.map(it => ({
-          ...it,
-          id: Date.now() + "-" + Math.random().toString(36).substring(2, 9)
-        }));
+        for (const item of items) {
+          const newTask = {
+            title: item.title,
+            release_id: currentRelease.id,
+            status: item.status || 'ready',
+            assignee: item.assignee || '',
+            priority: item.priority || 'Low',
+            description: item.description || '',
+            link: item.link || '',
+            tags: item.tags || []
+          };
+          
+          const { data: createdTask, error } = await supabase
+            .from('wb_tasks')
+            .insert(newTask)
+            .select();
+          
+          if (!error) {
+            currentRelease.items.push({
+              ...createdTask[0],
+              release: createdTask[0].release_id
+            });
+          }
+        }
         
-        save();
         render();
       };
+      
       reader.readAsText(file);
-    }
+    });
 
-    function save(){
-      localStorage.setItem('wbdrive_plan_v6', JSON.stringify(data));
-    }
-    
-    function load(){
-      try{
-        return JSON.parse(localStorage.getItem('wbdrive_plan_v6')) || {
-          releases: {
-            "1.0.0": {
-              releaseDate: "",
-              storeDate: "",
-              items: []
-            }
-          },
-          currentRelease: "1.0.0"
-        };
-      }catch(e){
-        return null;
-      }
-    }
-
-    function toggleTheme(){
+    // Переключение темы
+    els.themeBtn.addEventListener('click', () => {
       document.body.classList.toggle('light');
       els.themeBtn.textContent = document.body.classList.contains('light') ? '☀️' : '🌙';
+    });
+    
+    // Выход из системы
+    els.logoutBtn.addEventListener('click', logout);
+    
+    // Режим реального времени
+    function setupRealtime() {
+      const channel = supabase
+        .channel('tasks')
+        .on('postgres_changes', {
+          event: '*',
+          schema: 'public',
+          table: 'wb_tasks'
+        }, async (payload) => {
+          console.log('Change received:', payload);
+          await loadTasks();
+          render();
+        })
+        .subscribe();
     }
     
-    // Рендер бэклога (ИСПРАВЛЕННАЯ ВЕРСИЯ)
-    function renderBacklog() {
-      els.backlogView.innerHTML = '';
-      
-      // Соберем все релизы, у которых есть задачи
-      const releasesWithTasks = {};
-      
-      // Пройдемся по всем релизам
-      for (const version in data.releases) {
-        const release = data.releases[version];
-        if (release.items && release.items.length > 0) {
-          // Для каждого релиза создадим запись в releasesWithTasks
-          if (!releasesWithTasks[version]) {
-            releasesWithTasks[version] = {
-              releaseDate: release.releaseDate,
-              storeDate: release.storeDate,
-              items: []
-            };
-          }
-          
-          // Добавим задачи релиза
-          release.items.forEach(task => {
-            releasesWithTasks[version].items.push(task);
-          });
-        }
-      }
-      
-      // Сортируем релизы по версии (новые сверху)
-      const sortedReleases = Object.keys(releasesWithTasks)
-        .sort((a, b) => b.localeCompare(a, undefined, {numeric: true}));
-      
-      // Если нет задач ни в одном релизе
-      if (sortedReleases.length === 0) {
-        els.backlogView.innerHTML = '<div class="no-tasks">No tasks in any release</div>';
-        return;
-      }
-      
-      // Отрисовываем каждый релиз с задачами
-      sortedReleases.forEach(releaseVersion => {
-        const release = releasesWithTasks[releaseVersion];
-        
-        const group = document.createElement('div');
-        group.className = 'release-group';
-        
-        // Заголовок релиза
-        const header = document.createElement('div');
-        header.className = 'release-header';
-        header.innerHTML = `
-          <div class="release-title">Release ${releaseVersion}</div>
-          <div class="release-dates">
-            ${release.releaseDate ? `📅 ${release.releaseDate}` : ''}
-            ${release.storeDate ? ` | 📦 ${release.storeDate}` : ''}
-          </div>
-        `;
-        
-        group.appendChild(header);
-        
-        // Список задач
-        release.items.forEach(task => {
-          const taskEl = document.createElement('div');
-          taskEl.className = 'task-item';
-          
-          // Название статуса
-          const statusObj = STATUS_ORDER.find(s => s.id === task.status) || {label: task.status};
-          
-          taskEl.innerHTML = `
-            <div class="task-info">
-              <div class="task-title">${task.title}</div>
-              ${task.link ? `<a href="${task.link}" target="_blank" class="task-link">${task.link}</a>` : ''}
-            </div>
-            <div class="task-status status-${task.status}">${statusObj.label}</div>
-          `;
-          
-          group.appendChild(taskEl);
-        });
-        
-        els.backlogView.appendChild(group);
-      });
-    }
+    // Обработчики входа
+    els.loginBtn.addEventListener('click', login);
+    els.signupBtn.addEventListener('click', signup);
     
     // Обработчики переключения вкладок
     document.querySelectorAll('.view-tab').forEach(tab => {
@@ -1186,21 +1401,11 @@
       });
     });
 
-    // Инициализация обработчиков событий
-    els.addBtn.addEventListener('click', addItem);
-    els.exportBtn.addEventListener('click', exportCSV);
-    els.importBtn.addEventListener('click', () => els.importFile.click());
-    els.importFile.addEventListener('change', (e) => {
-      if(e.target.files[0]) importCSV(e.target.files[0]);
-    });
-    els.themeBtn.addEventListener('click', toggleTheme);
-    els.search.addEventListener('input', render);
-    document.addEventListener('keydown', (e) => {
-      if(e.key === 'Escape') els.modal.style.display = 'none';
-    });
+    // Проверка сессии при загрузке
+    checkSession();
     
-    // Первоначальный рендеринг
-    render();
+    // Инициализация
+    if (currentUser) initApp();
   })();
   </script>
 </body>
