@@ -959,6 +959,13 @@
       // Распределение задач по релизам
       if (tasks) {
         tasks.forEach(task => {
+          // Нормализация тегов
+          if (task.tags && !Array.isArray(task.tags)) {
+            task.tags = [task.tags];
+          } else if (!task.tags) {
+            task.tags = [];
+          }
+          
           const release = Object.values(data.releases).find(r => r.id === task.release_id);
           if (release) {
             // Добавляем версию релиза в задачу
@@ -1228,6 +1235,9 @@
       }[it.priority || 'Low'];
       
       // Используем версию релиза вместо ID
+      // Исправление: гарантируем что tags - массив
+      const tags = Array.isArray(it.tags) ? it.tags : [];
+      
       el.innerHTML = `
         <div>
           <span class="priority ${prioClass}"></span>
@@ -1236,7 +1246,7 @@
         </div>
         <div>${it.assignee || ''} | Release: ${it.releaseVersion || 'N/A'}</div>
         ${it.description ? `<div>${it.description}</div>` : ''}
-        ${it.tags ? `<div class="tags">${it.tags.map(t => `<span class=tag>${t}</span>`).join('')}</div>` : ''}
+        ${tags.length ? `<div class="tags">${tags.map(t => `<span class=tag>${t}</span>`).join('')}</div>` : ''}
       `;
       
       return el;
@@ -1293,7 +1303,7 @@
           assignee: "",
           priority: "Low",
           description: "",
-          tags: [],
+          tags: [], // Инициализируем как пустой массив
           user_id: user.id
         };
         
@@ -1335,13 +1345,16 @@
       editingId = id;
       
       // Заполняем форму данными
+      // Исправление: гарантируем что tags - массив перед join
+      const tags = Array.isArray(it.tags) ? it.tags : [];
+      
       els.mTitle.value = it.title;
       els.mRelease.value = it.releaseVersion || data.currentRelease;
       els.mAssignee.value = it.assignee || "";
       els.mPriority.value = it.priority || "Low";
       els.mDescription.value = it.description || "";
       els.mLink.value = it.link || "";
-      els.mTags.value = (it.tags || []).join(", ");
+      els.mTags.value = tags.join(", ");
     }
 
     // Сохранение задачи
@@ -1397,7 +1410,7 @@
           it.assignee || '',
           it.priority || '',
           it.link || '',
-          (it.tags || []).join(';'),
+          (Array.isArray(it.tags) ? it.tags.join(';') : '',
           it.description || ''
         ])
       );
@@ -1516,7 +1529,10 @@
     }
 
     // Рендер представления бэклога
-    function renderBacklog() {
+    async function renderBacklog() {
+      // Перезагружаем данные перед отображением
+      await loadReleases();
+      
       els.backlogView.innerHTML = '';
       
       // Сортируем релизы по версии (от новых к старым)
@@ -1546,23 +1562,22 @@
           const taskItem = document.createElement('div');
           taskItem.className = 'task-item';
           
-          // Определяем класс приоритета
-          const prioClass = task.priority.toLowerCase().replace(' ', '-');
+          // Исправление: гарантируем что tags - массив
+          const tags = Array.isArray(task.tags) ? task.tags : [];
           
           taskItem.innerHTML = `
             <div class="task-info">
               <div class="task-title">${task.title}</div>
-              <div>${task.assignee || 'Unassigned'} | Release: ${task.releaseVersion || 'N/A'}</div>
+              <div>${task.assignee || 'Unassigned'} | Release: ${release.version}</div>
               ${task.description ? `<div>${task.description}</div>` : ''}
-              ${task.tags?.length ? `
+              ${tags.length ? `
                 <div class="tags">
-                  ${task.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                  ${tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
                 </div>
               ` : ''}
               ${task.link ? `<a href="${task.link}" class="task-link" target="_blank">View details</a>` : ''}
             </div>
             <div class="task-status">
-              <span class="priority ${prioClass}"></span>
               <select class="status-selector" data-id="${task.id}">
                 ${STATUS_ORDER.map(s => 
                   `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${s.label}</option>`
@@ -1575,7 +1590,7 @@
         });
         
         // Если задач нет
-        if (release.items.length === 0) {
+        if (!release.items || release.items.length === 0) {
           tasksList.innerHTML = '<div class="no-tasks">No tasks for this release</div>';
         }
         
@@ -1588,25 +1603,17 @@
           const taskId = this.dataset.id;
           const newStatus = this.value;
           
-          // Находим задачу во всех релизах
-          for (const release of Object.values(data.releases)) {
-            const task = release.items.find(t => t.id == taskId);
-            if (task) {
-              // Обновляем статус
-              task.status = newStatus;
-              
-              // Обновляем в Supabase
-              await supabase
-                .from('tasks')
-                .update({ status: newStatus })
-                .eq('id', taskId);
-              
-              // Обновляем UI
-              const statusLabel = STATUS_ORDER.find(s => s.id === newStatus)?.label || newStatus;
-              alert(`Task status updated to: ${statusLabel}`);
-              break;
-            }
-          }
+          // Обновляем в Supabase
+          await supabase
+            .from('tasks')
+            .update({ status: newStatus })
+            .eq('id', taskId);
+          
+          // Перезагружаем данные
+          await loadReleases();
+          
+          // Перерисовываем представление
+          renderBacklog();
         });
       });
     }
