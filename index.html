@@ -655,18 +655,20 @@
     </div>
   </div>
   
-  <!-- Модальное окно входа -->
+  <!-- Модальное окно входа с формой -->
   <div id="loginModal" class="modal" style="display:block;">
     <div class="modal-content">
       <h3>Login to Release Manager</h3>
-      <input id="loginEmail" type="email" placeholder="Email"/>
-      <input id="loginPassword" type="password" placeholder="Password"/>
-      <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px;">
-        <button id="loginBtn" class="primary">Login</button>
-        <button id="signupBtn" class="secondary">Sign Up</button>
-      </div>
-      <div class="loader" id="loginLoader"></div>
-      <div id="loginMessage" style="margin-top:10px;color:var(--bad);"></div>
+      <form id="loginForm">
+        <input id="loginEmail" type="email" placeholder="Email" required />
+        <input id="loginPassword" type="password" placeholder="Password" required />
+        <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px;">
+          <button type="submit" id="loginBtn" class="primary">Login</button>
+          <button type="button" id="signupBtn" class="secondary">Sign Up</button>
+        </div>
+        <div class="loader" id="loginLoader"></div>
+        <div id="loginMessage" style="margin-top:10px;color:var(--bad);"></div>
+      </form>
     </div>
   </div>
 
