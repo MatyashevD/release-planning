@@ -522,6 +522,15 @@
       text-align: center;
     }
     
+    .status-selector {
+      background: var(--panel);
+      color: var(--text);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 8px;
+      padding: 8px 12px;
+      cursor: pointer;
+    }
+    
     /* Цвета статусов */
     .status-ready { background: var(--low); color: #000; }
     .status-dev { background: var(--accent); }
@@ -775,16 +784,24 @@
       if (els.signupBtn) els.signupBtn.addEventListener('click', signup);
       if (els.logoutBtn) els.logoutBtn.addEventListener('click', logout);
       
+      // Обработчик Enter в поле пароля
       if (els.loginPassword) {
         els.loginPassword.addEventListener('keypress', (e) => {
           if (e.key === 'Enter') login();
         });
       }
       
-      // ГАРАНТИРОВАННАЯ ПРИВЯЗКА КНОПКИ ADD ITEM
+      // Обработчик для вкладок
+      document.querySelectorAll('.view-tab').forEach(tab => {
+        tab.addEventListener('click', () => {
+          const view = tab.dataset.view;
+          switchView(view);
+        });
+      });
+      
+      // Обработчик для кнопки добавления задач
       if (els.addBtn) {
         els.addBtn.addEventListener('click', addItem);
-        console.log("Add button handler attached");
       }
     }
 
@@ -885,6 +902,9 @@
       initReleases();
       render();
       setupRealtime();
+      
+      // По умолчанию показываем Kanban
+      switchView('kanban');
     }
 
     // Загрузка релизов из Supabase
@@ -903,6 +923,7 @@
         releases.forEach(release => {
           data.releases[release.version] = {
             id: release.id,
+            version: release.version,
             releaseDate: release.release_date,
             storeDate: release.store_date,
             items: []
@@ -940,16 +961,11 @@
         tasks.forEach(task => {
           const release = Object.values(data.releases).find(r => r.id === task.release_id);
           if (release) {
+            // Добавляем версию релиза в задачу
             release.items.push({
-              id: task.id,
-              title: task.title,
-              status: task.status,
-              assignee: task.assignee,
-              priority: task.priority,
-              link: task.link,
-              description: task.description,
-              tags: task.tags || [],
-              release: task.release_id
+              ...task,
+              release: task.release_id,
+              releaseVersion: release.version
             });
           }
         });
@@ -1038,6 +1054,7 @@
           if (newRelease && newRelease.length > 0) {
             data.releases[version] = {
               id: newRelease[0].id,
+              version: version,
               releaseDate: null,
               storeDate: null,
               items: []
@@ -1066,6 +1083,7 @@
       const currentRelease = data.releases[data.currentRelease];
       const items = currentRelease.items || [];
       
+      // Гарантируем отрисовку всех статусов
       STATUS_ORDER.forEach(s => {
         const col = document.createElement('div');
         col.className = 'column';
@@ -1177,7 +1195,7 @@
           x.title,
           x.description,
           x.assignee,
-          x.release,
+          x.releaseVersion,
           (x.tags || []).join(' ')
         ].join(' ').toLowerCase();
         
@@ -1209,13 +1227,14 @@
         'Critical': 'prio-critical'
       }[it.priority || 'Low'];
       
+      // Используем версию релиза вместо ID
       el.innerHTML = `
         <div>
           <span class="priority ${prioClass}"></span>
           <b>${it.title}</b> 
           ${it.link ? `<a href="${it.link}" target="_blank">🔗</a>` : ''}
         </div>
-        <div>${it.assignee || ''} | Release: ${it.release || ''}</div>
+        <div>${it.assignee || ''} | Release: ${it.releaseVersion || 'N/A'}</div>
         ${it.description ? `<div>${it.description}</div>` : ''}
         ${it.tags ? `<div class="tags">${it.tags.map(t => `<span class=tag>${t}</span>`).join('')}</div>` : ''}
       `;
@@ -1244,65 +1263,66 @@
       }
     }
 
-    // Добавление новой задачи - ИСПРАВЛЕННАЯ ФУНКЦИЯ
+    // Добавление новой задачи
     async function addItem(){
-      console.log("Add Item button clicked");
-      
-      // Проверяем, что пользователь аутентифицирован
-      if (!currentUser) {
-        alert("Please login first");
-        return;
-      }
-      
-      const release = data.releases[data.currentRelease];
-      if (!release) {
-        alert("Please select a release first");
-        return;
-      }
-      
-      // Получаем ID текущего пользователя
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      // Создаем новую задачу
-      const newTask = {
-        title: "New Task",
-        release_id: release.id,
-        status: 'ready',
-        assignee: "",
-        priority: "Low",
-        description: "",
-        tags: [],
-        user_id: user.id  // Добавляем ID пользователя
-      };
-      
-      // Добавляем задачу в Supabase
-      const { data: createdTask, error } = await supabase
-        .from('tasks')
-        .insert(newTask)
-        .select();
-      
-      if (error) {
-        console.error('Error creating task:', error);
-        alert("Error creating task: " + error.message);
-        return;
-      }
-      
-      // Добавляем задачу локально
-      if (createdTask && createdTask.length > 0) {
+      try {
+        // Проверка аутентификации
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (!user || userError) {
+          alert("Please login first");
+          return;
+        }
+        
+        // Проверка выбранного релиза
+        if (!data.currentRelease) {
+          alert("Please select a release first");
+          return;
+        }
+        
+        const release = data.releases[data.currentRelease];
+        if (!release) {
+          alert("Selected release not found");
+          return;
+        }
+        
+        // Создаем задачу с user_id
+        const newTask = {
+          title: "New Task",
+          release_id: release.id,
+          status: 'ready',
+          assignee: "",
+          priority: "Low",
+          description: "",
+          tags: [],
+          user_id: user.id
+        };
+        
+        // Отправляем в Supabase
+        const { data: createdTask, error } = await supabase
+          .from('tasks')
+          .insert(newTask)
+          .select();
+        
+        if (error) throw error;
+        
+        // Добавляем задачу локально с версией релиза
         release.items.push({
           ...createdTask[0],
-          release: createdTask[0].release_id
+          release: createdTask[0].release_id,
+          releaseVersion: release.version
         });
         
-        // ОТКРЫВАЕМ РЕДАКТОР
+        // Открываем редактор
         openEditor(createdTask[0].id);
+        
+      } catch (error) {
+        console.error('Add item error:', error);
+        alert(`Error creating task: ${error.message}`);
       }
     }
 
-    // Открытие редактора задачи - ИСПРАВЛЕННАЯ ФУНКЦИЯ
+    // Открытие редактора задачи
     function openEditor(id){
-      console.log("Opening editor for task:", id);
-      
       // Показываем модальное окно
       els.modal.style.display = 'flex';
       
@@ -1316,7 +1336,7 @@
       
       // Заполняем форму данными
       els.mTitle.value = it.title;
-      els.mRelease.value = it.release || data.currentRelease;
+      els.mRelease.value = it.releaseVersion || data.currentRelease;
       els.mAssignee.value = it.assignee || "";
       els.mPriority.value = it.priority || "Low";
       els.mDescription.value = it.description || "";
@@ -1372,7 +1392,7 @@
       items.forEach(it => 
         rows.push([
           it.title,
-          it.release,
+          it.releaseVersion || '',
           it.status,
           it.assignee || '',
           it.priority || '',
@@ -1441,7 +1461,8 @@
           if (!error && createdTask && createdTask.length > 0) {
             currentRelease.items.push({
               ...createdTask[0],
-              release: createdTask[0].release_id
+              release: createdTask[0].release_id,
+              releaseVersion: currentRelease.version
             });
           }
         }
@@ -1477,6 +1498,119 @@
         .subscribe();
     }
     
+    // Переключение между представлениями
+    function switchView(viewName) {
+      // Обновляем активные вкладки
+      document.querySelectorAll('.view-tab').forEach(tab => {
+        tab.classList.toggle('active', tab.dataset.view === viewName);
+      });
+      
+      // Показываем/скрываем представления
+      els.kanbanView.style.display = viewName === 'kanban' ? 'block' : 'none';
+      els.backlogView.style.display = viewName === 'backlog' ? 'block' : 'none';
+      
+      // Если выбрано представление бэклога - рендерим его
+      if (viewName === 'backlog') {
+        renderBacklog();
+      }
+    }
+
+    // Рендер представления бэклога
+    function renderBacklog() {
+      els.backlogView.innerHTML = '';
+      
+      // Сортируем релизы по версии (от новых к старым)
+      const sortedReleases = Object.values(data.releases).sort((a, b) => {
+        return b.version.localeCompare(a.version);
+      });
+      
+      sortedReleases.forEach(release => {
+        const releaseGroup = document.createElement('div');
+        releaseGroup.className = 'release-group';
+        
+        releaseGroup.innerHTML = `
+          <div class="release-header">
+            <div class="release-title">Release ${release.version}</div>
+            <div class="release-dates">
+              <span>📅 ${release.releaseDate || 'No date'}</span>
+              <span>📦 ${release.storeDate || 'No date'}</span>
+            </div>
+          </div>
+          <div class="tasks-list"></div>
+        `;
+        
+        const tasksList = releaseGroup.querySelector('.tasks-list');
+        
+        // Добавляем задачи
+        (release.items || []).forEach(task => {
+          const taskItem = document.createElement('div');
+          taskItem.className = 'task-item';
+          
+          // Определяем класс приоритета
+          const prioClass = task.priority.toLowerCase().replace(' ', '-');
+          
+          taskItem.innerHTML = `
+            <div class="task-info">
+              <div class="task-title">${task.title}</div>
+              <div>${task.assignee || 'Unassigned'} | Release: ${task.releaseVersion || 'N/A'}</div>
+              ${task.description ? `<div>${task.description}</div>` : ''}
+              ${task.tags?.length ? `
+                <div class="tags">
+                  ${task.tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                </div>
+              ` : ''}
+              ${task.link ? `<a href="${task.link}" class="task-link" target="_blank">View details</a>` : ''}
+            </div>
+            <div class="task-status">
+              <span class="priority ${prioClass}"></span>
+              <select class="status-selector" data-id="${task.id}">
+                ${STATUS_ORDER.map(s => 
+                  `<option value="${s.id}" ${task.status === s.id ? 'selected' : ''}>${s.label}</option>`
+                ).join('')}
+              </select>
+            </div>
+          `;
+          
+          tasksList.appendChild(taskItem);
+        });
+        
+        // Если задач нет
+        if (release.items.length === 0) {
+          tasksList.innerHTML = '<div class="no-tasks">No tasks for this release</div>';
+        }
+        
+        els.backlogView.appendChild(releaseGroup);
+      });
+      
+      // Добавляем обработчики для селекторов статуса
+      document.querySelectorAll('.status-selector').forEach(select => {
+        select.addEventListener('change', async function() {
+          const taskId = this.dataset.id;
+          const newStatus = this.value;
+          
+          // Находим задачу во всех релизах
+          for (const release of Object.values(data.releases)) {
+            const task = release.items.find(t => t.id == taskId);
+            if (task) {
+              // Обновляем статус
+              task.status = newStatus;
+              
+              // Обновляем в Supabase
+              await supabase
+                .from('tasks')
+                .update({ status: newStatus })
+                .eq('id', taskId);
+              
+              // Обновляем UI
+              const statusLabel = STATUS_ORDER.find(s => s.id === newStatus)?.label || newStatus;
+              alert(`Task status updated to: ${statusLabel}`);
+              break;
+            }
+          }
+        });
+      });
+    }
+
     // Глобальный обработчик ошибок
     window.addEventListener('error', (event) => {
       console.error('Global error:', event.error);
@@ -1485,7 +1619,7 @@
 
     // Проверка сессии при загрузке
     document.addEventListener('DOMContentLoaded', () => {
-      // ИНИЦИАЛИЗАЦИЯ ВСЕХ ОБРАБОТЧИКОВ ПРИ ЗАГРУЗКЕ
+      // Инициализация обработчиков
       initEventHandlers();
       
       // Проверка сессии пользователя
