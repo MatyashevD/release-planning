@@ -672,7 +672,7 @@
         <input id="loginEmail" type="email" placeholder="Email" required />
         <input id="loginPassword" type="password" placeholder="Password" required />
         <div style="display:flex;gap:10px;justify-content:flex-end;margin-top:10px;">
-          <button type="submit" id="loginBtn" class="primary">Login</button>
+          <button type="button" id="loginBtn" class="primary">Login</button>
           <button type="button" id="signupBtn" class="secondary">Sign Up</button>
         </div>
         <div class="loader" id="loginLoader"></div>
@@ -757,7 +757,8 @@
       loginBtn: document.getElementById('loginBtn'),
       signupBtn: document.getElementById('signupBtn'),
       loginLoader: document.getElementById('loginLoader'),
-      loginMessage: document.getElementById('loginMessage')
+      loginMessage: document.getElementById('loginMessage'),
+      loginForm: document.getElementById('loginForm')
     };
 
     // ==================== АУТЕНТИФИКАЦИЯ ====================
@@ -779,15 +780,16 @@
     }
 
     function initEventHandlers() {
-      // Проверяем существование элементов перед назначением обработчиков
+      // Обработчики для кнопок входа/регистрации
       if (els.loginBtn) els.loginBtn.addEventListener('click', login);
       if (els.signupBtn) els.signupBtn.addEventListener('click', signup);
       if (els.logoutBtn) els.logoutBtn.addEventListener('click', logout);
       
-      // Обработчик Enter в поле пароля
-      if (els.loginPassword) {
-        els.loginPassword.addEventListener('keypress', (e) => {
-          if (e.key === 'Enter') login();
+      // Обработчик Enter в форме
+      if (els.loginForm) {
+        els.loginForm.addEventListener('submit', (e) => {
+          e.preventDefault();
+          login();
         });
       }
       
