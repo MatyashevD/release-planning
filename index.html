@@ -270,7 +270,7 @@
     }
     
     .card-btn {
-      background: rgba(255, 0, 0, 0.8);
+      background: rgba(0, 0, 0, 0.3);
       border: none;
       border-radius: 6px;
       width: 28px;
@@ -286,7 +286,7 @@
     }
     
     .card-btn:hover {
-      background: rgba(255, 0, 0, 1);
+      background: rgba(0, 0, 0, 0.6);
       transform: scale(1.1);
       box-shadow: 0 4px 8px rgba(0,0,0,0.3);
     }
@@ -1098,7 +1098,14 @@
       if (els.themeBtn) els.themeBtn.addEventListener('click', toggleTheme);
       if (els.mSave) els.mSave.addEventListener('click', saveTask);
       if (els.mCancel) els.mCancel.addEventListener('click', closeModal);
-      if (els.mDelete) els.mDelete.addEventListener('click', deleteTask);
+      if (els.mDelete) {
+        els.mDelete.addEventListener('click', () => {
+          console.log('Кнопка mDelete нажата, editingId =', editingId);
+          deleteTask();
+        });
+      } else {
+        console.error('Элемент mDelete не найден');
+      }
       
       // Live-поиск
       if (els.search) {
@@ -1734,6 +1741,7 @@
       if (!it) return;
       
       editingId = id;
+      console.log('openEditor: установлен editingId =', editingId);
       
       // Заполняем форму данными
       // Исправление: гарантируем что tags - массив перед join
@@ -1819,7 +1827,12 @@
         taskId = id || editingId;
       }
       
-      if (!taskId) return;
+      if (!taskId) {
+        console.error('deleteTask: не найден ID задачи для удаления');
+        return;
+      }
+      
+      console.log('Удаление задачи с ID:', taskId);
       
       if (!confirm('Вы уверены, что хотите удалить эту задачу?')) {
         return;
