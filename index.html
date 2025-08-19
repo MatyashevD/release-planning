@@ -569,7 +569,7 @@
     
     <button id="addBtn" class="primary">+ Add Item</button>
     <button id="exportBtn" class="primary">Export CSV</button>
-    <input type="file" id="importFile" style="display:none"/>
+    <input type="file" id="importFile" style="display:none" accept=".csv"/>
     <button id="importBtn" class="primary">Import CSV</button>
     <button id="themeBtn" class="secondary">🌙</button>
     <button id="logoutBtn" class="secondary" style="display:none;">Logout</button>
@@ -663,9 +663,11 @@
 
   <script>
   (function(){
+    // Конфигурация Supabase
     const SUPABASE_URL = "https://nfixznxrpiobbstrqvdw.supabase.co";
     const SUPABASE_KEY = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Im5maXh6bnhycGlvYmJzdHJxdmR3Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTU1MjA1MDgsImV4cCI6MjA3MTA5NjUwOH0.bTCzAPdX5mDVl8AtbZeefsSFqlPo7c_zebKimn_mCsY";
     
+    // Инициализация Supabase
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY, {
       auth: {
         flowType: 'pkce',
@@ -685,6 +687,7 @@
       {id:'released', label:'Released'}
     ];
 
+    // Структура данных
     let data = {
       releases: {},
       currentRelease: ""
@@ -694,6 +697,7 @@
     let editingId = null;
     let currentUser = null;
 
+    // Сбор элементов DOM
     const els = {
       board: document.getElementById('board'),
       search: document.getElementById('search'),
@@ -737,41 +741,58 @@
       loginForm: document.getElementById('loginForm')
     };
 
-    // Аутентификация
+    // ==================== АУТЕНТИФИКАЦИЯ ====================
     async function checkSession() {
       try {
         const { data: { session }, error } = await supabase.auth.getSession();
         
-        if (error) throw error;
+        if (error) {
+          console.error('Ошибка сессии:', error);
+          showLoginMessage('Ошибка сессии: ' + error.message);
+          return;
+        }
+        
         if (session) {
+          console.log('Активная сессия найдена:', session);
           currentUser = session.user;
           els.loginModal.style.display = 'none';
           els.logoutBtn.style.display = 'block';
           await initApp();
+        } else {
+          console.log('Активная сессия не найдена');
+          els.loginModal.style.display = 'block';
         }
       } catch (error) {
-        console.error('Session error:', error);
-        showLoginMessage('Session error: ' + error.message);
+        console.error('Ошибка при проверке сессии:', error);
+        showLoginMessage('Ошибка при проверке сессии: ' + error.message);
       }
     }
 
     function initEventHandlers() {
-      els.loginBtn.addEventListener('click', login);
-      els.signupBtn.addEventListener('click', signup);
-      els.logoutBtn.addEventListener('click', logout);
+      // Основные обработчики
+      if (els.loginBtn) els.loginBtn.addEventListener('click', login);
+      if (els.signupBtn) els.signupBtn.addEventListener('click', signup);
+      if (els.logoutBtn) els.logoutBtn.addEventListener('click', logout);
       
-      els.loginForm.addEventListener('submit', (e) => {
-        e.preventDefault();
-        login();
-      });
-      
-      els.loginPassword.addEventListener('keypress', (e) => {
-        if (e.key === 'Enter') {
+      // Обработчик формы входа
+      if (els.loginForm) {
+        els.loginForm.addEventListener('submit', (e) => {
           e.preventDefault();
           login();
-        }
-      });
+        });
+      }
       
+      // Обработчик Enter в поле пароля
+      if (els.loginPassword) {
+        els.loginPassword.addEventListener('keypress', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            login();
+          }
+        });
+      }
+      
+      // Обработчик для вкладок
       document.querySelectorAll('.view-tab').forEach(tab => {
         tab.addEventListener('click', () => {
           const view = tab.dataset.view;
@@ -779,7 +800,14 @@
         });
       });
       
-      els.addBtn.addEventListener('click', addItem);
+      // Обработчики кнопок
+      if (els.addBtn) els.addBtn.addEventListener('click', addItem);
+      if (els.exportBtn) els.exportBtn.addEventListener('click', exportCSV);
+      if (els.importBtn) els.importBtn.addEventListener('click', () => els.importFile.click());
+      if (els.importFile) els.importFile.addEventListener('change', importCSV);
+      if (els.themeBtn) els.themeBtn.addEventListener('click', toggleTheme);
+      if (els.mSave) els.mSave.addEventListener('click', saveTask);
+      if (els.mCancel) els.mCancel.addEventListener('click', closeModal);
     }
 
     async function login() {
@@ -789,24 +817,30 @@
         const password = els.loginPassword.value;
         
         if (!email || !password) {
-          showLoginMessage('Please enter email and password');
+          showLoginMessage('Пожалуйста, введите email и пароль');
           return;
         }
+        
+        console.log('Попытка входа с:', email);
         
         const { data, error } = await supabase.auth.signInWithPassword({
           email,
           password
         });
         
-        if (error) throw error;
+        if (error) {
+          console.error('Ошибка входа:', error);
+          throw error;
+        }
         
+        console.log('Вход успешен:', data);
         currentUser = data.user;
         els.loginModal.style.display = 'none';
         els.logoutBtn.style.display = 'block';
         await initApp();
       } catch (error) {
-        console.error('Login error:', error);
-        showLoginMessage(error.message || 'Login failed');
+        console.error('Ошибка входа:', error);
+        showLoginMessage(error.message || 'Ошибка входа. Проверьте данные.');
       } finally {
         toggleLoginLoader(false);
       }
@@ -819,9 +853,11 @@
         const password = els.loginPassword.value;
         
         if (!email || !password) {
-          showLoginMessage('Please enter email and password');
+          showLoginMessage('Пожалуйста, введите email и пароль');
           return;
         }
+        
+        console.log('Регистрация:', email);
         
         const { data, error } = await supabase.auth.signUp({
           email,
@@ -831,61 +867,91 @@
           }
         });
         
-        if (error) throw error;
+        if (error) {
+          console.error('Ошибка регистрации:', error);
+          throw error;
+        }
         
         if (data.user) {
+          console.log('Регистрация успешна:', data);
           currentUser = data.user;
           els.loginModal.style.display = 'none';
           els.logoutBtn.style.display = 'block';
           await initApp();
-          showLoginMessage('Registration successful!');
+          showLoginMessage('Регистрация успешна!');
         } else {
-          showLoginMessage('Check your email for confirmation!');
+          showLoginMessage('Проверьте email для подтверждения!');
         }
       } catch (error) {
-        console.error('Signup error:', error);
-        showLoginMessage(error.message || 'Registration failed');
+        console.error('Ошибка регистрации:', error);
+        showLoginMessage(error.message || 'Ошибка регистрации');
       } finally {
         toggleLoginLoader(false);
       }
     }
 
     async function logout() {
-      await supabase.auth.signOut();
-      currentUser = null;
-      els.logoutBtn.style.display = 'none';
-      els.loginModal.style.display = 'block';
-      data = { releases: {}, currentRelease: "" };
-      render();
+      try {
+        console.log('Выход из системы');
+        await supabase.auth.signOut();
+        currentUser = null;
+        els.logoutBtn.style.display = 'none';
+        els.loginModal.style.display = 'block';
+        data = { releases: {}, currentRelease: "" };
+        render();
+        showLoginMessage('Вы вышли из системы');
+      } catch (error) {
+        console.error('Ошибка выхода:', error);
+        showLoginMessage('Ошибка выхода: ' + error.message);
+      }
     }
 
     function toggleLoginLoader(show) {
-      els.loginLoader.style.display = show ? 'block' : 'none';
-      els.loginBtn.disabled = show;
-      els.signupBtn.disabled = show;
+      if (els.loginLoader) {
+        els.loginLoader.style.display = show ? 'block' : 'none';
+      }
+      if (els.loginBtn) {
+        els.loginBtn.disabled = show;
+      }
+      if (els.signupBtn) {
+        els.signupBtn.disabled = show;
+      }
     }
 
     function showLoginMessage(message) {
-      els.loginMessage.textContent = message;
-      setTimeout(() => { els.loginMessage.textContent = ''; }, 5000);
+      if (els.loginMessage) {
+        els.loginMessage.textContent = message;
+        setTimeout(() => { 
+          els.loginMessage.textContent = ''; 
+        }, 5000);
+      }
     }
 
-    // Основные функции
+    // ==================== ОСНОВНЫЕ ФУНКЦИИ ====================
     async function initApp() {
-      await loadReleases();
-      initReleases();
-      render();
-      setupRealtime();
-      switchView('kanban');
+      console.log('Инициализация приложения');
+      try {
+        await loadReleases();
+        initReleases();
+        render();
+        setupRealtime();
+        
+        // По умолчанию показываем Kanban
+        switchView('kanban');
+      } catch (error) {
+        console.error('Ошибка инициализации:', error);
+        showLoginMessage('Ошибка приложения: ' + error.message);
+      }
     }
 
     async function loadReleases() {
+      console.log('Загрузка релизов');
       const { data: releases, error } = await supabase
         .from('releases')
         .select('*');
       
       if (error) {
-        console.error('Error loading releases:', error);
+        console.error('Ошибка загрузки релизов:', error);
         return;
       }
       
@@ -902,29 +968,37 @@
         });
       }
       
+      // Загрузка задач для всех релизов
       await loadTasks();
       
+      // Установка текущего релиза
       if (Object.keys(data.releases).length > 0) {
         data.currentRelease = Object.keys(data.releases)[0];
+      } else {
+        console.log('Релизы не найдены');
       }
     }
 
     async function loadTasks() {
+      console.log('Загрузка задач');
       const { data: tasks, error } = await supabase
         .from('tasks')
         .select('*');
       
       if (error) {
-        console.error('Error loading tasks:', error);
+        console.error('Ошибка загрузки задач:', error);
         return;
       }
       
+      // Сброс задач
       Object.values(data.releases).forEach(release => {
         release.items = [];
       });
       
+      // Распределение задач по релизам
       if (tasks) {
         tasks.forEach(task => {
+          // Нормализация тегов
           if (task.tags && !Array.isArray(task.tags)) {
             task.tags = [task.tags];
           } else if (!task.tags) {
@@ -938,12 +1012,15 @@
               release: task.release_id,
               releaseVersion: release.version
             });
+          } else {
+            console.warn('Релиз не найден для задачи:', task);
           }
         });
       }
     }
 
     function initReleases() {
+      console.log('Инициализация релизов в UI');
       els.filterRelease.innerHTML = '<option value="">Select Release</option>';
       Object.keys(data.releases).forEach(release => {
         const option = document.createElement('option');
@@ -955,97 +1032,116 @@
         els.filterRelease.appendChild(option);
       });
       
+      // Обновляем даты для текущего релиза
       const current = data.releases[data.currentRelease];
       if (current) {
         els.releaseDate.value = current.releaseDate || "";
         els.storeDate.value = current.storeDate || "";
+      } else {
+        console.log('Текущий релиз не найден');
       }
     }
 
-    els.releaseDate.onchange = async () => {
-      const releaseVersion = data.currentRelease;
-      const release = data.releases[releaseVersion];
-      if (!release) return;
-      
-      release.releaseDate = els.releaseDate.value;
-      
-      await supabase
-        .from('releases')
-        .update({ release_date: release.releaseDate })
-        .eq('version', releaseVersion);
-      
-      render();
-    };
+    // Обработчики дат
+    if (els.releaseDate) {
+      els.releaseDate.onchange = async () => {
+        const releaseVersion = data.currentRelease;
+        const release = data.releases[releaseVersion];
+        if (!release) return;
+        
+        release.releaseDate = els.releaseDate.value;
+        
+        await supabase
+          .from('releases')
+          .update({ release_date: release.releaseDate })
+          .eq('version', releaseVersion);
+        
+        render();
+      };
+    }
     
-    els.storeDate.onchange = async () => {
-      const releaseVersion = data.currentRelease;
-      const release = data.releases[releaseVersion];
-      if (!release) return;
-      
-      release.storeDate = els.storeDate.value;
-      
-      await supabase
-        .from('releases')
-        .update({ store_date: release.storeDate })
-        .eq('version', releaseVersion);
-      
-      render();
-    };
+    if (els.storeDate) {
+      els.storeDate.onchange = async () => {
+        const releaseVersion = data.currentRelease;
+        const release = data.releases[releaseVersion];
+        if (!release) return;
+        
+        release.storeDate = els.storeDate.value;
+        
+        await supabase
+          .from('releases')
+          .update({ store_date: release.storeDate })
+          .eq('version', releaseVersion);
+        
+        render();
+      };
+    }
 
-    els.filterRelease.onchange = () => {
-      data.currentRelease = els.filterRelease.value;
-      render();
-    };
+    // Обработчик смены релиза
+    if (els.filterRelease) {
+      els.filterRelease.onchange = () => {
+        data.currentRelease = els.filterRelease.value;
+        render();
+      };
+    }
 
-    els.addReleaseBtn.addEventListener('click', async () => {
-      const version = prompt("Введите версию релиза (например, 1.1.0):");
-      if (version) {
-        if (!data.releases[version]) {
-          const { data: newRelease, error } = await supabase
-            .from('releases')
-            .insert({
-              version: version,
-              release_date: null,
-              store_date: null
-            })
-            .select();
-          
-          if (error) {
-            alert("Error creating release: " + error.message);
-            return;
-          }
-          
-          if (newRelease && newRelease.length > 0) {
-            data.releases[version] = {
-              id: newRelease[0].id,
-              version: version,
-              releaseDate: null,
-              storeDate: null,
-              items: []
-            };
+    // Добавление нового релиза
+    if (els.addReleaseBtn) {
+      els.addReleaseBtn.addEventListener('click', async () => {
+        const version = prompt("Введите версию релиза (например, 1.1.0):");
+        if (version) {
+          if (!data.releases[version]) {
+            // Добавляем релиз в Supabase
+            const { data: newRelease, error } = await supabase
+              .from('releases')
+              .insert({
+                version: version,
+                release_date: null,
+                store_date: null
+              })
+              .select();
             
-            data.currentRelease = version;
-            initReleases();
-            render();
+            if (error) {
+              alert("Ошибка создания релиза: " + error.message);
+              return;
+            }
+            
+            // Добавляем релиз локально
+            if (newRelease && newRelease.length > 0) {
+              data.releases[version] = {
+                id: newRelease[0].id,
+                version: version,
+                releaseDate: null,
+                storeDate: null,
+                items: []
+              };
+              
+              data.currentRelease = version;
+              initReleases();
+              render();
+            }
+          } else {
+            alert("Релиз с такой версией уже существует!");
           }
-        } else {
-          alert("Релиз с такой версией уже существует!");
         }
-      }
-    });
+      });
+    }
 
+    // Рендер доски
     function render(){
+      console.log('Рендер доски');
       if (!data.currentRelease || !data.releases[data.currentRelease]) {
-        els.board.innerHTML = '<div class="no-tasks">No releases found</div>';
+        els.board.innerHTML = '<div class="no-tasks">Релизы не найдены</div>';
         return;
       }
       
       initReleases();
-      els.board.innerHTML='';
+      els.board.innerHTML = '';
       
       const currentRelease = data.releases[data.currentRelease];
       const items = currentRelease.items || [];
       
+      // Гарантируем отрисовку всех статусов
       STATUS_ORDER.forEach(s => {
         const col = document.createElement('div');
         col.className = 'column';
@@ -1067,10 +1163,12 @@
       renderReleaseTimeline();
     }
 
+    // Рендер графиков
     function renderCharts(){
       const currentRelease = data.releases[data.currentRelease];
       const items = currentRelease.items || [];
       
+      // График прогресса по статусам
       const counts = STATUS_ORDER.map(s => 
         items.filter(x => x.status === s.id).length
       );
@@ -1086,12 +1184,12 @@
             label: 'Задачи',
             data: counts,
             backgroundColor: [
-              '#6bc4a4',
-              '#7aa2ff',
-              '#ffd166',
-              '#f77f00',
-              '#9d4edd',
-              '#2a9d8f'
+              '#6bc4a4', // Ready to Dev
+              '#7aa2ff', // В разработке
+              '#ffd166', // Review/QA
+              '#f77f00', // Тестирование
+              '#9d4edd', // Готово к релизу
+              '#2a9d8f'  // Released
             ]
           }]
         },
@@ -1102,12 +1200,16 @@
       });
     }
 
+    // Рендер таймлайна релиза
     function renderReleaseTimeline(){
       const currentRelease = data.releases[data.currentRelease];
+      if (!currentRelease) return;
       
+      // Обновляем отображение дат
       els.releaseDateDisplay.textContent = currentRelease.releaseDate || "Не установлена";
       els.storeDateDisplay.textContent = currentRelease.storeDate || "Не установлена";
       
+      // Рассчитываем количество дней до событий
       const today = new Date();
       today.setHours(0,0,0,0);
       
@@ -1121,6 +1223,7 @@
           (diffDays > 14 ? "days-normal" : 
            diffDays > 3 ? "days-warning" : "days-critical");
         
+        // Прогресс до релиза (30 дней = 100%)
         const daysTotal = 30;
         const daysPassed = Math.min(Math.max(0, daysTotal - diffDays), daysTotal);
         els.releaseProgress.style.width = `${(daysPassed / daysTotal) * 100}%`;
@@ -1136,12 +1239,14 @@
           (diffDays > 14 ? "days-normal" : 
            diffDays > 3 ? "days-warning" : "days-critical");
         
+        // Прогресс до отправки в Store
         const daysTotal = 30;
         const daysPassed = Math.min(Math.max(0, daysTotal - diffDays), daysTotal);
         els.storeProgress.style.width = `${(daysPassed / daysTotal) * 100}%`;
       }
     }
 
+    // Получение задач по статусу
     function getItems(status, items){
       const q = els.search.value.toLowerCase();
       return items.filter(x => x.status === status).filter(x => {
@@ -1157,6 +1262,7 @@
       });
     }
 
+    // Создание карточки задачи
     function cardEl(it){
       const el = document.createElement('div');
       el.className = 'card';
@@ -1180,6 +1286,8 @@
         'Critical': 'prio-critical'
       }[it.priority || 'Low'];
       
+      // Используем версию релиза вместо ID
+      // Исправление: гарантируем что tags - массив
       const tags = Array.isArray(it.tags) ? it.tags : [];
       
       el.innerHTML = `
@@ -1196,6 +1304,7 @@
       return el;
     }
 
+    // Обработка перетаскивания
     async function onDrop(e){
       e.preventDefault();
       const id = e.dataTransfer.getData('text/plain');
@@ -1206,6 +1315,7 @@
         const newStatus = e.currentTarget.dataset.status;
         it.status = newStatus;
         
+        // Обновляем задачу в Supabase
         await supabase
           .from('tasks')
           .update({ status: newStatus })
@@ -1215,36 +1325,42 @@
       }
     }
 
+    // Добавление новой задачи
     async function addItem(){
       try {
+        // Проверка аутентификации
         const { data: { user }, error: userError } = await supabase.auth.getUser();
         if (!user || userError) {
-          alert("Please login first");
+          alert("Пожалуйста, войдите в систему");
           return;
         }
         
+        // Проверка выбранного релиза
         if (!data.currentRelease) {
-          alert("Please select a release first");
+          alert("Пожалуйста, выберите релиз");
           return;
         }
         
         const release = data.releases[data.currentRelease];
         if (!release) {
-          alert("Selected release not found");
+          alert("Выбранный релиз не найден");
           return;
         }
         
+        // Создаем задачу с user_id
         const newTask = {
-          title: "New Task",
+          title: "Новая задача",
           release_id: release.id,
           status: 'ready',
           assignee: "",
           priority: "Low",
           description: "",
+          link: "",
           tags: [],
           user_id: user.id
         };
         
+        // Отправляем в Supabase
         const { data: createdTask, error } = await supabase
           .from('tasks')
           .insert(newTask)
@@ -1252,21 +1368,25 @@
         
         if (error) throw error;
         
+        // Добавляем задачу локально с версией релиза
         release.items.push({
           ...createdTask[0],
           release: createdTask[0].release_id,
           releaseVersion: release.version
         });
         
+        // Открываем редактор
         openEditor(createdTask[0].id);
         
       } catch (error) {
-        console.error('Add item error:', error);
-        alert(`Error creating task: ${error.message}`);
+        console.error('Ошибка добавления задачи:', error);
+        alert(`Ошибка создания задачи: ${error.message}`);
       }
     }
 
+    // Открытие редактора задачи
     function openEditor(id){
+      // Показываем модальное окно
       els.modal.style.display = 'flex';
       
       const currentRelease = data.releases[data.currentRelease];
@@ -1277,9 +1397,11 @@
       
       editingId = id;
       
+      // Заполняем форму данными
+      // Исправление: гарантируем что tags - массив перед join
       const tags = Array.isArray(it.tags) ? it.tags : [];
       
-      els.mTitle.value = it.title;
+      els.mTitle.value = it.title || "";
       els.mRelease.value = it.releaseVersion || data.currentRelease;
       els.mAssignee.value = it.assignee || "";
       els.mPriority.value = it.priority || "Low";
@@ -1288,97 +1410,124 @@
       els.mTags.value = tags.join(", ");
     }
 
-    els.mSave.onclick = async () => {
-      const currentRelease = data.releases[data.currentRelease];
-      if (!currentRelease) return;
-      
-      const it = currentRelease.items.find(x => x.id == editingId);
-      if (!it) return;
-      
-      it.title = els.mTitle.value;
-      it.assignee = els.mAssignee.value;
-      it.priority = els.mPriority.value;
-      it.description = els.mDescription.value;
-      it.link = els.mLink.value;
-      it.tags = els.mTags.value.split(',').map(x => x.trim()).filter(Boolean);
-      
-      await supabase
-        .from('tasks')
-        .update({
-          title: it.title,
-          assignee: it.assignee,
-          priority: it.priority,
-          description: it.description,
-          link: it.link,
-          tags: it.tags
-        })
-        .eq('id', it.id);
-      
-      els.modal.style.display = 'none';
-      render();
-    };
-
-    els.mCancel.onclick = () => {
-      els.modal.style.display = 'none';
-    };
-
-    els.exportBtn.addEventListener('click', () => {
-      const currentRelease = data.releases[data.currentRelease];
-      if (!currentRelease) return;
-      
-      const items = currentRelease.items || [];
-      const rows = [["title","release","status","assignee","priority","link","tags","description"]];
-      
-      items.forEach(it => 
-        rows.push([
-          it.title,
-          it.releaseVersion || '',
-          it.status,
-          it.assignee || '',
-          it.priority || '',
-          it.link || '',
-          (Array.isArray(it.tags) ? it.tags.join(';') : '',
-          it.description || ''
-        ])
-      );
-      
-      const csv = rows.map(r => r.map(v => '"' + (v || '').replace(/"/g, '""') + '"').join(",")).join("\n");
-      const blob = new Blob([csv], {type: 'text/csv'});
-      const a = document.createElement('a');
-      a.href = URL.createObjectURL(blob);
-      a.download = `release_${data.currentRelease}_plan.csv`;
-      a.click();
-    });
-
-    els.importBtn.addEventListener('click', () => els.importFile.click());
-    els.importFile.addEventListener('change', async (e) => {
-      if (!e.target.files[0]) return;
-      
-      const file = e.target.files[0];
-      const reader = new FileReader();
-      
-      reader.onload = async function(e) {
+    // Сохранение задачи
+    async function saveTask() {
+      try {
         const currentRelease = data.releases[data.currentRelease];
         if (!currentRelease) return;
         
-        const lines = e.target.result.split(/\r?\n/).filter(Boolean);
+        const it = currentRelease.items.find(x => x.id == editingId);
+        if (!it) return;
+        
+        // Обновляем данные задачи
+        it.title = els.mTitle.value;
+        it.assignee = els.mAssignee.value;
+        it.priority = els.mPriority.value;
+        it.description = els.mDescription.value;
+        it.link = els.mLink.value;
+        it.tags = els.mTags.value.split(',').map(x => x.trim()).filter(Boolean);
+        
+        // Обновляем задачу в Supabase
+        await supabase
+          .from('tasks')
+          .update({
+            title: it.title,
+            assignee: it.assignee,
+            priority: it.priority,
+            description: it.description,
+            link: it.link,
+            tags: it.tags
+          })
+          .eq('id', it.id);
+        
+        closeModal();
+        render();
+      } catch (error) {
+        console.error('Ошибка сохранения:', error);
+        alert('Ошибка сохранения задачи: ' + error.message);
+      }
+    }
+
+    function closeModal() {
+      els.modal.style.display = 'none';
+    }
+
+    // Экспорт в CSV
+    async function exportCSV() {
+      try {
+        const currentRelease = data.releases[data.currentRelease];
+        if (!currentRelease) return;
+        
+        const items = currentRelease.items || [];
+        const rows = [["title","release","status","assignee","priority","link","tags","description"]];
+        
+        items.forEach(it => {
+          const tags = Array.isArray(it.tags) ? it.tags.join(';') : '';
+          rows.push([
+            it.title || '',
+            it.releaseVersion || '',
+            it.status || '',
+            it.assignee || '',
+            it.priority || '',
+            it.link || '',
+            tags,
+            it.description || ''
+          ]);
+        });
+        
+        const csv = rows.map(r => 
+          r.map(v => `"${(v || '').replace(/"/g, '""')}"`).join(",")
+        ).join("\n");
+        
+        const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
+        const a = document.createElement('a');
+        a.href = URL.createObjectURL(blob);
+        a.download = `release_${data.currentRelease}_plan.csv`;
+        a.click();
+      } catch (error) {
+        console.error('Ошибка экспорта:', error);
+        alert('Ошибка экспорта: ' + error.message);
+      }
+    }
+
+    // Импорт из CSV
+    async function importCSV(e) {
+      if (!e.target.files[0]) return;
+      
+      try {
+        const file = e.target.files[0];
+        const text = await readFile(file);
+        
+        const currentRelease = data.releases[data.currentRelease];
+        if (!currentRelease) return;
+        
+        const lines = text.split(/\r?\n/).filter(Boolean);
         if (lines.length < 2) return;
         
-        const hdr = lines.shift().split(',').map(x => x.replace(/^"|"$/g, '').trim());
+        const header = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
         const items = [];
         
-        for (const line of lines) {
-          try {
-            const cols = line.match(/(".*?"|[^",]+)(?=\s*,|\s*$)/g).map(c => c.replace(/^"|"$/g, ''));
-            const obj = {};
-            hdr.forEach((h, i) => obj[h] = cols[i] || '');
-            obj.tags = (obj.tags || '').split(';').filter(Boolean);
-            items.push(obj);
-          } catch (e) {
-            console.error('Error parsing CSV line:', line);
+        for (let i = 1; i < lines.length; i++) {
+          const line = lines[i];
+          const values = parseCSVLine(line);
+          if (values.length !== header.length) continue;
+          
+          const obj = {};
+          header.forEach((key, index) => {
+            obj[key] = values[index].replace(/^"|"$/g, '');
+          });
+          
+          // Преобразование тегов
+          if (obj.tags) {
+            obj.tags = obj.tags.split(';').filter(Boolean);
+          } else {
+            obj.tags = [];
           }
+          
+          items.push(obj);
         }
         
+        // Добавляем задачи в текущий релиз
         for (const item of items) {
           const newTask = {
             title: item.title,
@@ -1406,18 +1555,53 @@
         }
         
         render();
-      };
-      
-      reader.readAsText(file);
-    });
+      } catch (error) {
+        console.error('Ошибка импорта:', error);
+        alert('Ошибка импорта: ' + error.message);
+      } finally {
+        // Сброс значения input для возможности повторной загрузки того же файла
+        els.importFile.value = '';
+      }
+    }
 
-    els.themeBtn.addEventListener('click', () => {
+    function readFile(file) {
+      return new Promise((resolve, reject) => {
+        const reader = new FileReader();
+        reader.onload = e => resolve(e.target.result);
+        reader.onerror = reject;
+        reader.readAsText(file);
+      });
+    }
+
+    function parseCSVLine(line) {
+      const values = [];
+      let current = '';
+      let inQuotes = false;
+      
+      for (let i = 0; i < line.length; i++) {
+        const char = line[i];
+        
+        if (char === '"') {
+          inQuotes = !inQuotes;
+        } else if (char === ',' && !inQuotes) {
+          values.push(current);
+          current = '';
+        } else {
+          current += char;
+        }
+      }
+      
+      values.push(current);
+      return values;
+    }
+
+    // Переключение темы
+    function toggleTheme() {
       document.body.classList.toggle('light');
       els.themeBtn.textContent = document.body.classList.contains('light') ? '☀️' : '🌙';
-    });
+    }
     
-    els.logoutBtn.addEventListener('click', logout);
-    
+    // Режим реального времени
     function setupRealtime() {
       const channel = supabase
         .channel('tasks')
@@ -1426,30 +1610,38 @@
           schema: 'public',
           table: 'tasks'
         }, async (payload) => {
+          console.log('Изменение получено:', payload);
           await loadTasks();
           render();
         })
         .subscribe();
     }
     
+    // Переключение между представлениями
     function switchView(viewName) {
+      // Обновляем активные вкладки
       document.querySelectorAll('.view-tab').forEach(tab => {
         tab.classList.toggle('active', tab.dataset.view === viewName);
       });
       
+      // Показываем/скрываем представления
       els.kanbanView.style.display = viewName === 'kanban' ? 'block' : 'none';
       els.backlogView.style.display = viewName === 'backlog' ? 'block' : 'none';
       
+      // Если выбрано представление бэклога - рендерим его
       if (viewName === 'backlog') {
         renderBacklog();
       }
     }
 
+    // Рендер представления бэклога
     async function renderBacklog() {
+      // Перезагружаем данные перед отображением
       await loadReleases();
       
       els.backlogView.innerHTML = '';
       
+      // Сортируем релизы по версии (от новых к старым)
       const sortedReleases = Object.values(data.releases).sort((a, b) => {
         return b.version.localeCompare(a.version);
       });
@@ -1471,10 +1663,12 @@
         
         const tasksList = releaseGroup.querySelector('.tasks-list');
         
+        // Добавляем задачи
         (release.items || []).forEach(task => {
           const taskItem = document.createElement('div');
           taskItem.className = 'task-item';
           
+          // Исправление: гарантируем что tags - массив
           const tags = Array.isArray(task.tags) ? task.tags : [];
           
           taskItem.innerHTML = `
@@ -1501,6 +1695,7 @@
           tasksList.appendChild(taskItem);
         });
         
+        // Если задач нет
         if (!release.items || release.items.length === 0) {
           tasksList.innerHTML = '<div class="no-tasks">No tasks for this release</div>';
         }
@@ -1508,23 +1703,30 @@
         els.backlogView.appendChild(releaseGroup);
       });
       
+      // Добавляем обработчики для селекторов статуса
       document.querySelectorAll('.status-selector').forEach(select => {
         select.addEventListener('change', async function() {
           const taskId = this.dataset.id;
           const newStatus = this.value;
           
+          // Обновляем в Supabase
           await supabase
             .from('tasks')
             .update({ status: newStatus })
             .eq('id', taskId);
           
+          // Перезагружаем данные
           await loadReleases();
+          
+          // Перерисовываем представление
           renderBacklog();
         });
       });
     }
 
+    // Инициализация приложения
     document.addEventListener('DOMContentLoaded', () => {
+      console.log('DOM загружен');
       initEventHandlers();
       checkSession();
     });
