@@ -1,4 +1,3 @@
-
 <!DOCTYPE html>
 <html lang="en">
 <head>
@@ -8,23 +7,24 @@
   <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js"></script>
   <style>
-    :root{
-      --bg:#0f1226;
-      --panel:#161a36;
-      --panel-2:#1b2046;
-      --text:#f4f6ff;
-      --muted:#c0c6f0;
-      --accent:#7aa2ff;
-      --bad:#ff5e5e;
-      --low:#6bc4a4;
-      --med:#ffd166;
-      --high:#f77f00;
-      --critical:#ef476f;
-      --shadow: 0 8px 30px rgba(0,0,0,.35);
-      --radius: 18px;
-      --large: 18px;
-      --xl: 22px;
-      --xxl: 28px;
+    :root {
+      --bg: #0f1226;
+      --panel: #161a36;
+      --panel-2: #1b2046;
+      --text: #f4f6ff;
+      --muted: #c0c6f0;
+      --accent: #7aa2ff;
+      --bad: #ff5e5e;
+      --low: #6bc4a4;
+      --med: #ffd166;
+      --high: #f77f00;
+      --critical: #ef476f;
+      --shadow: 0 1px 3px rgba(0,0,0,.2);
+      --radius: 8px;
+      --font-size-sm: 14px;
+      --font-size: 16px;
+      --font-size-lg: 18px;
+      --font-size-xl: 22px;
       
       --primary-bg-default: #A73AFD;
       --primary-bg-hovered: #9625FC;
@@ -42,13 +42,13 @@
       --search-text: #B879FC;
     }
 
-    body.light{
-      --bg:#f5f7ff;
-      --panel:#ffffff;
-      --panel-2:#f0f0f8;
-      --text:#111;
-      --muted:#555;
-      --accent:#3366ff;
+    body.light {
+      --bg: #f5f7ff;
+      --panel: #ffffff;
+      --panel-2: #f0f0f8;
+      --text: #111;
+      --muted: #555;
+      --accent: #3366ff;
       
       --primary-bg-default: #A73AFD;
       --primary-bg-hovered: #9625FC;
@@ -66,200 +66,244 @@
       --search-text: #A73AFD;
     }
 
-    *{box-sizing:border-box;}
-    body{
-      margin:0;
-      background:linear-gradient(180deg,var(--bg),#0b0e20);
-      color:var(--text);
-      font-family:Inter,system-ui;
-      transition:.3s background,.3s color;
-      min-height:100vh;
+    * {
+      box-sizing: border-box;
+      margin: 0;
+      padding: 0;
+    }
+    
+    body {
+      margin: 0;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+      transition: .3s background, .3s color;
+      min-height: 100vh;
+      line-height: 1.5;
+      font-size: var(--font-size);
     }
 
-    .topbar{
-      display:flex;
-      gap:12px;
-      align-items:center;
-      padding:12px 18px;
-      background:rgba(10,13,34,.8);
-      position:sticky;
-      top:0;
-      z-index:10;
-      flex-wrap:wrap;
-    }
-    body.light .topbar{background:#eaeaff;}
-    .app-title{
-      font-size:var(--xxl);
-      font-weight:800;
-      flex:1;
+    /* Improved Topbar */
+    .topbar {
+      display: flex;
+      gap: 12px;
+      align-items: center;
+      padding: 12px 20px;
+      background: var(--panel);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      flex-wrap: wrap;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.08);
     }
     
-    button{
-      font-size:var(--large);
-      border-radius:8px;
-      border:none;
-      padding:8px 16px;
-      cursor:pointer;
-      transition:background 0.2s, transform 0.1s;
+    body.light .topbar {
+      background: var(--panel);
+      border-bottom: 1px solid rgba(0, 0, 0, 0.08);
     }
     
-    button.primary{
-      background:var(--primary-bg-default);
-      color:var(--primary-content-default);
+    .app-title {
+      font-size: var(--font-size-xl);
+      font-weight: 600;
+      flex: 1;
+      color: var(--text);
     }
     
-    button.primary:hover{
-      background:var(--primary-bg-hovered);
+    button {
+      font-size: var(--font-size-sm);
+      border-radius: var(--radius);
+      border: none;
+      padding: 8px 12px;
+      cursor: pointer;
+      transition: background 0.2s, transform 0.1s;
+      font-weight: 500;
     }
     
-    button.primary:active{
-      background:var(--primary-bg-pressed);
-      transform:translateY(1px);
+    button.primary {
+      background: var(--primary-bg-default);
+      color: var(--primary-content-default);
     }
     
-    button.primary:disabled{
-      background:var(--primary-bg-disabled);
-      color:var(--primary-content-disabled);
-      cursor:not-allowed;
+    button.primary:hover {
+      background: var(--primary-bg-hovered);
     }
     
-    button.secondary{
-      background:var(--panel-2);
-      color:var(--secondary-content-default);
-      border:1px solid rgba(255,255,255,.1);
+    button.primary:active {
+      background: var(--primary-bg-pressed);
+      transform: translateY(1px);
     }
     
-    body.light button.secondary{
-      border:1px solid #ccc;
+    button.primary:disabled {
+      background: var(--primary-bg-disabled);
+      color: var(--primary-content-disabled);
+      cursor: not-allowed;
     }
     
-    button.secondary:disabled{
-      color:var(--secondary-content-disabled);
+    button.secondary {
+      background: transparent;
+      color: var(--secondary-content-default);
+      border: 1px solid rgba(255,255,255,.15);
     }
     
-    button.danger{
-      background:var(--bad);
-      color:white;
+    body.light button.secondary {
+      border: 1px solid rgba(0,0,0,.15);
+    }
+    
+    button.secondary:disabled {
+      color: var(--secondary-content-disabled);
+    }
+    
+    button.danger {
+      background: var(--bad);
+      color: white;
     }
     
     #search {
-      font-size:var(--large);
-      border-radius:8px;
-      border:1px solid transparent;
-      background:var(--search-bg-default);
-      color:var(--search-text);
-      padding:8px 16px;
-      transition:background 0.2s, transform 0.1s;
+      font-size: var(--font-size-sm);
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.1);
+      background: var(--search-bg-default);
+      color: var(--search-text);
+      padding: 8px 12px;
+      transition: all 0.2s;
+      width: 200px;
     }
     
     #search:hover {
-      background:var(--search-bg-hover);
+      background: var(--search-bg-hover);
     }
     
     #search:focus {
-      background:var(--search-bg-pressed);
-      outline:none;
-      transform:scale(1.01);
+      background: var(--search-bg-pressed);
+      outline: none;
+      box-shadow: 0 0 0 2px rgba(122, 162, 255, 0.3);
     }
     
     #search::placeholder {
-      color:rgba(184, 121, 252, 0.7);
+      color: rgba(184, 121, 252, 0.7);
     }
     
     body.light #search::placeholder {
-      color:rgba(167, 58, 253, 0.7);
+      color: rgba(167, 58, 253, 0.7);
     }
     
-    select{
-      font-size:var(--large);
-      border-radius:8px;
-      border:1px solid rgba(255,255,255,.1);
-      background:var(--panel-2);
-      color:var(--text);
-      padding:8px 16px;
+    select {
+      font-size: var(--font-size-sm);
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.1);
+      background: var(--panel-2);
+      color: var(--text);
+      padding: 8px 12px;
+      height: 36px;
     }
     
-    body.light select{
-      border:1px solid #ccc;
+    body.light select {
+      border: 1px solid rgba(0,0,0,.1);
     }
 
-    .board{
-      display:grid;
-      grid-template-columns:repeat(6,minmax(250px,1fr));
-      gap:12px;
-      padding:12px;
+    /* Improved Board */
+    .board {
+      display: grid;
+      grid-template-columns: repeat(6, minmax(250px, 1fr));
+      gap: 16px;
+      padding: 20px;
     }
     
-    .column{
-      background:var(--panel);
-      border-radius:var(--radius);
-      display:flex;
-      flex-direction:column;
-      transition:.3s background;
+    .column {
+      background: var(--panel);
+      border-radius: var(--radius);
+      display: flex;
+      flex-direction: column;
+      transition: .3s background;
+      height: fit-content;
+      max-height: calc(100vh - 200px);
     }
     
-    .col-header{
-      padding:10px;
-      font-weight:700;
-      font-size:var(--xl);
-      border-bottom:1px solid rgba(255,255,255,.1);
+    .col-header {
+      padding: 12px 16px;
+      font-weight: 600;
+      font-size: var(--font-size-sm);
+      border-bottom: 1px solid rgba(255,255,255,.08);
+      color: var(--muted);
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+    }
+    
+    .col-count {
+      background: rgba(255, 255, 255, 0.1);
+      border-radius: 10px;
+      padding: 2px 8px;
+      font-size: 12px;
+      min-width: 24px;
+      text-align: center;
     }
 
-    .dropzone{
-      padding:10px;
-      display:flex;
-      flex-direction:column;
-      gap:12px;
-      min-height:50px;
+    .dropzone {
+      padding: 12px;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      min-height: 100px;
+      overflow-y: auto;
+      flex: 1;
     }
 
-    .card{
-      background:linear-gradient(180deg,rgba(255,255,255,.06),rgba(255,255,255,.03));
-      border:1px solid rgba(255,255,255,.1);
-      border-radius:12px;
-      padding:12px 45px 12px 12px;
-      cursor:grab;
-      transition:.3s background;
-      position:relative;
+    /* Improved Cards */
+    .card {
+      background: var(--panel-2);
+      border: 1px solid rgba(255,255,255,.08);
+      border-radius: var(--radius);
+      padding: 12px;
+      cursor: grab;
+      transition: all 0.2s;
+      position: relative;
     }
     
     body.light .card {
-      border: 1px solid rgba(0,0,0,.1);
+      border: 1px solid rgba(0,0,0,.08);
     }
     
-    .card.dragging{
-      opacity:.6;
+    .card:hover {
+      border-color: rgba(122, 162, 255, 0.3);
+      box-shadow: var(--shadow);
     }
     
-    .priority{
-      width:12px;
-      height:12px;
-      border-radius:50%;
-      margin-right:6px;
-      display:inline-block;
+    .card.dragging {
+      opacity: .6;
+      transform: rotate(3deg);
     }
     
-    .prio-low{background:var(--low);} 
-    .prio-med{background:var(--med);} 
-    .prio-high{background:var(--high);} 
-    .prio-critical{background:var(--critical);} 
-    
-    .bug{
-      border:2px solid var(--bad)!important;
+    .priority {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      margin-right: 6px;
     }
     
-    .tags{
-      display:flex;
-      gap:6px;
-      flex-wrap:wrap;
-      margin-top:4px;
+    .prio-low { background: var(--low); } 
+    .prio-med { background: var(--med); } 
+    .prio-high { background: var(--high); } 
+    .prio-critical { background: var(--critical); } 
+    
+    .bug {
+      border-left: 3px solid var(--bad) !important;
     }
     
-    .tag{
-      background:rgba(255,255,255,.1);
-      border-radius:6px;
-      padding:2px 6px;
-      font-size:14px;
+    .tags {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+      margin-top: 8px;
+    }
+    
+    .tag {
+      background: rgba(255,255,255,.08);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 12px;
+      color: var(--muted);
     }
     
     .card-actions {
@@ -267,221 +311,255 @@
       top: 8px;
       right: 8px;
       display: flex;
-      gap: 6px;
+      gap: 4px;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    
+    .card:hover .card-actions {
+      opacity: 1;
     }
     
     .card-btn {
       background: rgba(0, 0, 0, 0.3);
       border: none;
-      border-radius: 6px;
-      width: 28px;
-      height: 28px;
+      border-radius: 4px;
+      width: 24px;
+      height: 24px;
       display: flex;
       align-items: center;
       justify-content: center;
       cursor: pointer;
-      font-size: 16px;
+      font-size: 12px;
       color: white;
       transition: all 0.2s ease;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
     
     .card-btn:hover {
       background: rgba(0, 0, 0, 0.6);
-      transform: scale(1.1);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
-    }
-    
-    .card-btn:active {
-      transform: scale(0.95);
     }
     
     .card-content {
       display: flex;
       flex-direction: column;
-      gap: 5px;
+      gap: 6px;
     }
     
     .card-title-row {
       display: flex;
-      align-items: center;
+      align-items: flex-start;
       gap: 6px;
+      margin-bottom: 4px;
     }
     
     .task-title {
       flex: 1;
       word-wrap: break-word;
-      line-height: 1.2;
+      line-height: 1.4;
+      font-weight: 500;
     }
     
     .card-links {
       display: flex;
       gap: 8px;
-      margin-top: 2px;
+      margin-top: 4px;
     }
     
     .card-links a {
       opacity: 0.7;
       transition: opacity 0.2s;
+      font-size: 12px;
     }
     
     .card-links a:hover {
       opacity: 1;
     }
-
-    .footer{
-      padding:10px;
-      font-size:14px;
-      color:var(--muted);
-    }
     
-    #dashboard{
-      background:var(--panel);
-      margin:12px;
-      border-radius:var(--radius);
-      padding:12px;
-    }
-    
-    .dates{
-      display:flex;
-      gap:20px;
-      align-items:center;
-    }
-    
-    #releaseInfo{
-      margin-top:8px;
-      font-size:15px;
-      color:var(--muted);
+    .assignee {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 4px;
     }
 
-    .modal{
-      position:fixed;
-      top:0;
-      left:0;
-      right:0;
-      bottom:0;
-      background:rgba(0,0,0,.6);
-      display:flex;
-      align-items:center;
-      justify-content:center;
-      z-index:100;
-      backdrop-filter: blur(15px) brightness(0.7);
+    .footer {
+      padding: 16px 20px;
+      font-size: 14px;
+      color: var(--muted);
+      border-top: 1px solid rgba(255,255,255,.08);
+      margin-top: auto;
     }
     
-    .modal-content{
-      background:var(--panel-2);
-      padding:30px;
-      border-radius:12px;
-      max-width:500px;
-      width:90%;
-      box-shadow:var(--shadow);
-      display:flex;
-      flex-direction:column;
-      gap:15px;
-      border: 2px solid rgba(255,255,255,0.3);
-      animation: modalAppear 0.3s ease-out;
+    #dashboard {
+      background: var(--panel);
+      margin: 16px;
+      border-radius: var(--radius);
+      padding: 20px;
+    }
+    
+    .dates {
+      display: flex;
+      gap: 16px;
+      align-items: center;
+      font-size: var(--font-size-sm);
+    }
+    
+    #releaseInfo {
+      margin-top: 12px;
+      font-size: 14px;
+      color: var(--muted);
+    }
+
+    /* Improved Modal */
+    .modal {
+      position: fixed;
+      top: 0;
+      left: 0;
+      right: 0;
+      bottom: 0;
+      background: rgba(0,0,0,.7);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 100;
+    }
+    
+    .modal-content {
+      background: var(--panel);
+      padding: 24px;
+      border-radius: var(--radius);
+      max-width: 500px;
+      width: 90%;
+      box-shadow: 0 10px 30px rgba(0,0,0,.3);
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      border: 1px solid rgba(255,255,255,0.1);
+      animation: modalAppear 0.2s ease-out;
       max-height: 90vh;
       overflow-y: auto;
     }
     
     @keyframes modalAppear {
-      from { opacity: 0; transform: translateY(-20px); }
-      to { opacity: 1; transform: translateY(0); }
+      from { opacity: 0; transform: scale(0.95); }
+      to { opacity: 1; transform: scale(1); }
     }
     
-    .modal-content h3{
-      margin:0 0 20px;
-      font-size:20px;
-      text-align:center;
+    .modal-content h3 {
+      margin: 0 0 16px;
+      font-size: 18px;
+      font-weight: 600;
+    }
+    
+    .modal-content input,
+    .modal-content select,
+    .modal-content textarea {
+      width: 100%;
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,.1);
+      background: var(--panel-2);
+      color: var(--text);
+      font-size: var(--font-size-sm);
+    }
+    
+    .modal-content textarea {
+      min-height: 100px;
+      resize: vertical;
     }
     
     .release-timeline {
-      display:flex;
-      gap:20px;
-      margin-top:15px;
+      display: flex;
+      gap: 16px;
+      margin-top: 16px;
     }
     
     .release-milestone {
-      flex:1;
-      background:var(--panel-2);
-      border-radius:var(--radius);
-      padding:15px;
-      position:relative;
+      flex: 1;
+      background: var(--panel-2);
+      border-radius: var(--radius);
+      padding: 16px;
+      position: relative;
     }
     
     .milestone-header {
-      font-weight:bold;
-      margin-bottom:10px;
-      display:flex;
-      justify-content:space-between;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      font-size: var(--font-size-sm);
     }
     
     .milestone-date {
-      font-size:18px;
-      margin:5px 0;
+      font-size: 16px;
+      margin: 5px 0;
     }
     
     .milestone-days {
-      font-size:14px;
-      margin-top:5px;
-      padding:3px 8px;
-      border-radius:12px;
-      display:inline-block;
+      font-size: 12px;
+      margin-top: 5px;
+      padding: 3px 8px;
+      border-radius: 12px;
+      display: inline-block;
     }
     
-    .days-normal {background:var(--low);}
-    .days-warning {background:var(--high);}
-    .days-critical {background:var(--critical);}
+    .days-normal { background: var(--low); color: #000; }
+    .days-warning { background: var(--high); }
+    .days-critical { background: var(--critical); }
     
     .progress-bar {
-      height:8px;
-      background:rgba(255,255,255,0.1);
-      border-radius:4px;
-      margin-top:10px;
-      overflow:hidden;
+      height: 6px;
+      background: rgba(255,255,255,0.1);
+      border-radius: 3px;
+      margin-top: 10px;
+      overflow: hidden;
     }
     
     .progress-fill {
-      height:100%;
-      background:var(--primary-bg-default);
-      border-radius:4px;
+      height: 100%;
+      background: var(--primary-bg-default);
+      border-radius: 3px;
+      transition: width 0.3s ease;
     }
     
     .timeline-connector {
-      position:absolute;
-      top:40%;
-      right:-20px;
-      width:20px;
-      height:2px;
-      background:var(--muted);
+      position: absolute;
+      top: 40%;
+      right: -16px;
+      width: 16px;
+      height: 2px;
+      background: var(--muted);
     }
     
     .release-chart {
-      margin-top:20px;
+      margin-top: 20px;
     }
     
     .chart-container {
-      background:var(--panel-2);
-      border-radius:var(--radius);
-      padding:15px;
+      background: var(--panel-2);
+      border-radius: var(--radius);
+      padding: 16px;
       height: 250px;
     }
     
     .chart-title {
-      font-weight:bold;
-      margin-bottom:10px;
+      font-weight: 600;
+      margin-bottom: 12px;
+      font-size: var(--font-size-sm);
+      color: var(--muted);
     }
     
     .dates input {
       background: var(--panel-2);
       color: var(--text);
       border: 1px solid rgba(255,255,255,.1);
-      border-radius: 8px;
+      border-radius: var(--radius);
       padding: 6px 10px;
+      font-size: var(--font-size-sm);
     }
     
     body.light .dates input {
-      border: 1px solid #ccc;
+      border: 1px solid rgba(0,0,0,.1);
     }
     
     .release-controls {
@@ -491,30 +569,35 @@
     }
     
     .release-name {
-      font-weight: bold;
-      font-size: 20px;
-      margin-right: 10px;
+      font-weight: 600;
+      font-size: var(--font-size-sm);
+      margin-right: 6px;
+      color: var(--muted);
     }
     
     .view-tabs {
       display: flex;
-      gap: 10px;
-      padding: 10px 20px 0;
-      margin-bottom: 15px;
+      gap: 4px;
+      padding: 0 20px;
+      margin: 16px 0 0;
+      border-bottom: 1px solid rgba(255,255,255,.08);
     }
     
     .view-tab {
-      padding: 10px 20px;
-      background: var(--panel-2);
-      border-radius: 8px 8px 0 0;
+      padding: 10px 16px;
+      background: transparent;
+      border-radius: var(--radius) var(--radius) 0 0;
       cursor: pointer;
-      transition: all 0.3s;
-      border-bottom: 3px solid transparent;
+      transition: all 0.2s;
+      border-bottom: 2px solid transparent;
+      font-size: var(--font-size-sm);
+      color: var(--muted);
+      font-weight: 500;
     }
     
     .view-tab.active {
-      background: var(--panel);
-      border-bottom: 3px solid var(--primary-bg-default);
+      color: var(--accent);
+      border-bottom: 2px solid var(--accent);
     }
     
     #backlogView {
@@ -525,9 +608,8 @@
     .release-group {
       background: var(--panel);
       border-radius: var(--radius);
-      margin-bottom: 25px;
+      margin-bottom: 20px;
       padding: 20px;
-      box-shadow: var(--shadow);
       position: relative;
     }
     
@@ -536,13 +618,13 @@
       top: 20px;
       right: 20px;
       display: flex;
-      gap: 10px;
+      gap: 8px;
     }
     
     .release-btn {
       padding: 6px 12px;
-      font-size: 14px;
-      border-radius: 6px;
+      font-size: 12px;
+      border-radius: var(--radius);
       cursor: pointer;
     }
     
@@ -550,51 +632,45 @@
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding-bottom: 15px;
-      border-bottom: 2px solid rgba(255,255,255,0.1);
-      margin-bottom: 15px;
+      padding-bottom: 16px;
+      border-bottom: 1px solid rgba(255,255,255,0.08);
+      margin-bottom: 16px;
       padding-right: 150px;
     }
     
     .release-title {
-      font-size: 22px;
-      font-weight: bold;
+      font-size: 18px;
+      font-weight: 600;
       color: var(--accent);
     }
     
     .release-dates {
       display: flex;
-      gap: 20px;
-      font-size: 16px;
+      gap: 16px;
+      font-size: 14px;
       color: var(--muted);
     }
     
     .task-item {
-      padding: 12px 16px;
+      padding: 12px;
       background: var(--panel-2);
-      border-radius: 10px;
+      border-radius: var(--radius);
       margin-bottom: 8px;
       display: flex;
       justify-content: space-between;
       align-items: flex-start;
-      transition: all 0.3s ease;
+      transition: all 0.2s ease;
       cursor: grab;
-      min-height: auto;
-      max-height: none;
-      overflow: visible;
-      border: 1px solid rgba(255,255,255,0.1);
+      border: 1px solid rgba(255,255,255,0.08);
     }
     
     .task-item:hover {
       background: var(--panel);
-      border-color: rgba(255,255,255,0.2);
-      transform: translateY(-1px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+      border-color: rgba(122, 162, 255, 0.2);
     }
     
     .task-item.updating {
       opacity: 0.7;
-      transform: scale(0.98);
       pointer-events: none;
     }
     
@@ -604,25 +680,25 @@
     
     .drop-zone-active {
       background: rgba(122, 162, 255, 0.1);
-      border: 2px dashed var(--accent);
+      border: 1px dashed var(--accent);
     }
     
     /* Компактные стили для backlog */
     .task-title-compact {
-      font-size: 16px;
+      font-size: 15px;
       line-height: 1.4;
       margin-bottom: 4px;
-      font-weight: 600;
+      font-weight: 500;
     }
     
     .task-meta {
-      font-size: 14px;
+      font-size: 13px;
       color: var(--muted);
       font-weight: normal;
     }
     
     .task-description-compact {
-      font-size: 14px;
+      font-size: 13px;
       color: var(--muted);
       margin-top: 6px;
       line-height: 1.3;
@@ -631,17 +707,16 @@
     .tags-compact {
       margin-top: 6px;
       display: flex;
-      gap: 6px;
+      gap: 4px;
       flex-wrap: wrap;
     }
     
     .tag-compact {
-      background: rgba(255,255,255,.15);
-      border-radius: 6px;
-      padding: 3px 8px;
-      font-size: 13px;
+      background: rgba(255,255,255,.1);
+      border-radius: 4px;
+      padding: 2px 6px;
+      font-size: 11px;
       color: var(--text);
-      font-weight: 500;
     }
     
     .task-link-compact {
@@ -659,17 +734,17 @@
     }
     
     .task-title {
-      font-weight: 600;
-      font-size: 18px;
-      margin-bottom: 8px;
+      font-weight: 500;
+      font-size: 16px;
+      margin-bottom: 6px;
     }
     
     .task-link {
       color: var(--accent);
       text-decoration: none;
-      font-size: 15px;
+      font-size: 14px;
       display: inline-block;
-      margin-top: 5px;
+      margin-top: 4px;
     }
     
     .task-link:hover {
@@ -677,22 +752,23 @@
     }
     
     .task-status {
-      padding: 6px 15px;
-      border-radius: 20px;
-      font-size: 15px;
+      padding: 6px 12px;
+      border-radius: var(--radius);
+      font-size: 13px;
       font-weight: 500;
-      min-width: 140px;
+      min-width: 120px;
       text-align: center;
     }
     
     .status-selector {
       background: var(--panel);
       color: var(--text);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 8px;
-      padding: 8px 12px;
+      border: 1px solid rgba(255,255,255,0.1);
+      border-radius: var(--radius);
+      padding: 6px 10px;
       cursor: pointer;
-      transition: all 0.3s;
+      transition: all 0.2s;
+      font-size: 13px;
     }
     
     .status-selector:disabled {
@@ -710,16 +786,16 @@
     .no-tasks {
       text-align: center;
       padding: 30px;
-      font-size: 18px;
+      font-size: 16px;
       color: var(--muted);
     }
     
     .loader {
-      border: 4px solid rgba(255,255,255,0.3);
+      border: 3px solid rgba(255,255,255,0.3);
       border-radius: 50%;
-      border-top: 4px solid var(--accent);
-      width: 40px;
-      height: 40px;
+      border-top: 3px solid var(--accent);
+      width: 30px;
+      height: 30px;
       animation: spin 1s linear infinite;
       margin: 20px auto;
       display: none;
@@ -732,7 +808,7 @@
     
     /* Light theme modal adjustments */
     body.light .modal {
-      backdrop-filter: blur(15px) brightness(1.2);
+      backdrop-filter: blur(5px);
     }
     
     body.light .modal-content {
@@ -744,15 +820,16 @@
     #loginForm {
       display: flex;
       flex-direction: column;
-      gap: 15px;
+      gap: 16px;
     }
     
     #loginForm input {
-      padding: 12px;
-      border-radius: 8px;
-      border: 1px solid rgba(255,255,255,0.2);
-      background: var(--panel);
+      padding: 10px 12px;
+      border-radius: var(--radius);
+      border: 1px solid rgba(255,255,255,0.1);
+      background: var(--panel-2);
       color: var(--text);
+      font-size: var(--font-size-sm);
     }
     
     #loginForm .button-group {
@@ -770,62 +847,86 @@
       display: flex;
       gap: 10px;
       justify-content: flex-end;
-      margin-top: 15px;
+      margin-top: 16px;
     }
     
     .delete-btn {
       background: var(--bad);
       color: white;
       border: none;
-      border-radius: 8px;
-      padding: 10px 20px;
+      border-radius: var(--radius);
+      padding: 8px 16px;
       cursor: pointer;
-      font-size: 14px;
+      font-size: 13px;
       font-weight: 500;
       transition: all 0.2s ease;
-      box-shadow: 0 2px 4px rgba(0,0,0,0.2);
     }
     
     .delete-btn:hover {
       background: #ff4444;
-      transform: translateY(-1px);
-      box-shadow: 0 4px 8px rgba(0,0,0,0.3);
     }
     
-    .delete-btn:active {
-      transform: translateY(0);
+    /* Utility classes */
+    .flex {
+      display: flex;
+    }
+    
+    .items-center {
+      align-items: center;
+    }
+    
+    .gap-1 {
+      gap: 4px;
+    }
+    
+    .gap-2 {
+      gap: 8px;
+    }
+    
+    .gap-3 {
+      gap: 12px;
+    }
+    
+    .text-sm {
+      font-size: var(--font-size-sm);
+    }
+    
+    .text-muted {
+      color: var(--muted);
     }
   </style>
 </head>
 <body>
   <div class="topbar">
     <div class="app-title">WB Drive Release Plan</div>
-    <input id="search" placeholder="Search or filter (title, tag, release)"/>
+    <input id="search" placeholder="Search tasks..." />
     
     <div class="release-controls">
       <span class="release-name">Release:</span>
       <select id="filterRelease">
         <option value="">Select Release</option>
       </select>
-      <button id="addReleaseBtn" class="primary">+ Add Release</button>
+      <button id="addReleaseBtn" class="primary">+ Release</button>
     </div>
     
     <div class="dates">
-      📅 Плановый релиз: <input type="date" id="releaseDate"/>
-      📦 Отправка в Store: <input type="date" id="storeDate"/>
+      <span>📅 Release:</span>
+      <input type="date" id="releaseDate"/>
+      <span>📦 Store:</span>
+      <input type="date" id="storeDate"/>
     </div>
     
-    <button id="addBtn" class="primary">+ Add Item</button>
-    <button id="exportBtn" class="primary">Export CSV</button>
+    <button id="addBtn" class="primary">+ Task</button>
+    <button id="exportBtn" class="secondary">Export</button>
     <input type="file" id="importFile" style="display:none" accept=".csv"/>
-    <button id="importBtn" class="primary">Import CSV</button>
+    <button id="importBtn" class="secondary">Import</button>
     <button id="themeBtn" class="secondary">🌙</button>
     <button id="logoutBtn" class="secondary" style="display:none;">Logout</button>
   </div>
 
   <div class="view-tabs">
     <div class="view-tab active" data-view="kanban">Kanban Board</div>
-    <div class="view-tab" data-view="backlog">Backlog Update</div>
+    <div class="view-tab" data-view="backlog">Backlog</div>
   </div>
 
   <div id="kanbanView">
@@ -833,7 +934,7 @@
       <div class="release-timeline">
         <div class="release-milestone">
           <div class="milestone-header">
-            <span>Отправка в Store</span>
+            <span>Store Submission</span>
             <span class="milestone-days" id="storeDays"></span>
           </div>
           <div class="milestone-date" id="storeDateDisplay"></div>
@@ -844,7 +945,7 @@
         
         <div class="release-milestone">
           <div class="milestone-header">
-            <span>Плановый релиз</span>
+            <span>Planned Release</span>
             <span class="milestone-days" id="releaseDays"></span>
           </div>
           <div class="milestone-date" id="releaseDateDisplay"></div>
@@ -856,7 +957,7 @@
       
       <div class="release-chart">
         <div class="chart-container">
-          <div class="chart-title">Прогресс релиза</div>
+          <div class="chart-title">Release Progress</div>
           <canvas id="progressChart"></canvas>
         </div>
       </div>
@@ -869,7 +970,7 @@
 
   <div id="backlogView"></div>
 
-  <div class="footer">Drag cards between statuses. Click card to edit. Bugs are highlighted in red.</div>
+  <div class="footer">Drag tasks between statuses. Click to edit.</div>
 
   <div id="modal" class="modal" style="display:none;">
     <div class="modal-content">
@@ -889,8 +990,8 @@
       <textarea id="mDescription" placeholder="Description"></textarea>
       <input id="mTags" placeholder="Tags (comma separated)"/>
       <div class="modal-actions">
-        <button id="mDelete" class="delete-btn">Delete Task</button>
-        <div style="display:flex;gap:10px;">
+        <button id="mDelete" class="delete-btn">Delete</button>
+        <div class="flex gap-2">
           <button id="mCancel" class="secondary">Cancel</button>
           <button id="mSave" class="primary">Save</button>
         </div>
