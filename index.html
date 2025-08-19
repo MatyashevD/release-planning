@@ -283,43 +283,36 @@
       right:0;
       bottom:0;
       background:rgba(0,0,0,.6);
-      display: flex;
-      align-items: center;
-      justify-content: center;
+      display:flex;
+      align-items:center;
+      justify-content:center;
       z-index:100;
       backdrop-filter: blur(15px) brightness(0.7);
     }
     
     .modal-content{
-        background: var(--panel-2);
-        padding: 30px;
-        border-radius: 12px;
-        max-width: 400px;
-        width: 90%; /* Для адаптивности */
-        box-shadow: var(--shadow);
-        display: flex;
-        flex-direction: column;
-        gap: 15px;
-        border: 2px solid rgba(255,255,255,0.3);
-        animation: modalAppear 0.3s ease-out;
-        position: relative; /* Для позиционирования внутри */
-        transform: translateY(0); /* Сбрасываем возможные трансформации */
+      background:var(--panel-2);
+      padding:30px;
+      border-radius:12px;
+      max-width:400px;
+      width:90%;
+      box-shadow:var(--shadow);
+      display:flex;
+      flex-direction:column;
+      gap:15px;
+      border: 2px solid rgba(255,255,255,0.3);
+      animation: modalAppear 0.3s ease-out;
     }
     
     @keyframes modalAppear {
-      from { 
-    opacity: 0; 
-    transform: translateY(-20px); 
-      }
-      to { 
-    opacity: 1; 
-    transform: translateY(0); 
-      }
+      from { opacity: 0; transform: translateY(-20px); }
+      to { opacity: 1; transform: translateY(0); }
     }
     
     .modal-content h3{
-      margin:0 0 10px;
+      margin:0 0 20px;
       font-size:20px;
+      text-align:center;
     }
     
     .release-timeline {
@@ -580,6 +573,32 @@
       background: var(--panel);
       border: 1px solid rgba(0,0,0,0.1);
     }
+    
+    /* Login form specific styles */
+    #loginForm {
+      display: flex;
+      flex-direction: column;
+      gap: 15px;
+    }
+    
+    #loginForm input {
+      padding: 12px;
+      border-radius: 8px;
+      border: 1px solid rgba(255,255,255,0.2);
+      background: var(--panel);
+      color: var(--text);
+    }
+    
+    #loginForm .button-group {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      margin-top: 10px;
+    }
+    
+    #loginForm .button-group button {
+      flex: 1;
+    }
   </style>
 </head>
 <body>
@@ -678,23 +697,21 @@
     </div>
   </div>
   
- <div id="loginModal" class="modal" style="display:flex;"> <!-- Изменил на display:flex -->
-  <div class="modal-content">
-    <h3 style="text-align: center; margin-bottom: 20px;">Login to Release Manager</h3>
-    <form id="loginForm" style="display: flex; flex-direction: column; gap: 15px;">
-      <input id="loginEmail" type="email" placeholder="Email" required style="padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: var(--panel); color: var(--text);" />
-      <input id="loginPassword" type="password" placeholder="Password" required style="padding: 12px; border-radius: 8px; border: 1px solid rgba(255,255,255,0.2); background: var(--panel); color: var(--text);" />
-      
-      <div style="display:flex; gap:10px; justify-content: center; margin-top:10px;">
-        <button type="button" id="loginBtn" class="primary" style="flex: 1;">Login</button>
-        <button type="button" id="signupBtn" class="secondary" style="flex: 1;">Sign Up</button>
-      </div>
-      
-      <div class="loader" id="loginLoader" style="margin: 10px auto;"></div>
-      <div id="loginMessage" style="margin-top:10px; text-align: center; color:var(--bad);"></div>
-    </form>
+  <div id="loginModal" class="modal" style="display:flex;">
+    <div class="modal-content">
+      <h3>Login to Release Manager</h3>
+      <form id="loginForm">
+        <input id="loginEmail" type="email" placeholder="Email" required />
+        <input id="loginPassword" type="password" placeholder="Password" required />
+        <div class="button-group">
+          <button type="button" id="loginBtn" class="primary">Login</button>
+          <button type="button" id="signupBtn" class="secondary">Sign Up</button>
+        </div>
+        <div class="loader" id="loginLoader"></div>
+        <div id="loginMessage" style="margin-top:10px;color:var(--bad);text-align:center;"></div>
+      </form>
+    </div>
   </div>
-</div>
 
   <script>
   (function(){
@@ -715,10 +732,10 @@
     
     const STATUS_ORDER = [
       {id:'ready', label:'Ready to Dev'},
-      {id:'dev', label:'In Dev'},
+      {id:'dev', label:'В разработке'},
       {id:'review', label:'Review/QA'},
-      {id:'test', label:'In Test'},
-      {id:'rfr', label:'Ready for Release'},
+      {id:'test', label:'Тестирование'},
+      {id:'rfr', label:'Готово к релизу'},
       {id:'released', label:'Released'}
     ];
 
@@ -790,17 +807,25 @@
         if (session) {
           console.log('Активная сессия найдена:', session);
           currentUser = session.user;
-          els.loginModal.style.display = 'none';
+          hideLoginModal();
           els.logoutBtn.style.display = 'block';
           await initApp();
         } else {
           console.log('Активная сессия не найдена');
-          els.loginModal.style.display = 'block';
+          showLoginModal();
         }
       } catch (error) {
         console.error('Ошибка при проверке сессии:', error);
         showLoginMessage('Ошибка при проверке сессии: ' + error.message);
       }
+    }
+
+    function showLoginModal() {
+      els.loginModal.style.display = 'flex';
+    }
+
+    function hideLoginModal() {
+      els.loginModal.style.display = 'none';
     }
 
     function initEventHandlers() {
@@ -870,7 +895,7 @@
         
         console.log('Вход успешен:', data);
         currentUser = data.user;
-        els.loginModal.style.display = 'none';
+        hideLoginModal();
         els.logoutBtn.style.display = 'block';
         await initApp();
       } catch (error) {
@@ -910,7 +935,7 @@
         if (data.user) {
           console.log('Регистрация успешна:', data);
           currentUser = data.user;
-          els.loginModal.style.display = 'none';
+          hideLoginModal();
           els.logoutBtn.style.display = 'block';
           await initApp();
           showLoginMessage('Регистрация успешна!');
@@ -931,7 +956,7 @@
         await supabase.auth.signOut();
         currentUser = null;
         els.logoutBtn.style.display = 'none';
-        els.loginModal.style.display = 'block';
+        showLoginModal();
         data = { releases: {}, currentRelease: "" };
         render();
         showLoginMessage('Вы вышли из системы');
@@ -1705,7 +1730,7 @@
           taskItem.dataset.id = task.id;
           
           // Исправление: гарантируем что tags - массив
-          const tags = Array.isArray(task.tags) ? task.tags : [];
+          const tags = Array.isArray(task.tags) ? it.tags : [];
           
           taskItem.innerHTML = `
             <div class="task-info">
