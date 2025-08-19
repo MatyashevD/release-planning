@@ -136,6 +136,11 @@
       color:var(--secondary-content-disabled);
     }
     
+    button.danger{
+      background:var(--bad);
+      color:white;
+    }
+    
     #search {
       font-size:var(--large);
       border-radius:8px;
@@ -214,6 +219,11 @@
       padding:10px;
       cursor:grab;
       transition:.3s background;
+      position:relative;
+    }
+    
+    body.light .card {
+      border: 1px solid rgba(0,0,0,.1);
     }
     
     .card.dragging{
@@ -249,6 +259,27 @@
       border-radius:6px;
       padding:2px 6px;
       font-size:14px;
+    }
+    
+    .card-actions {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      display: flex;
+      gap: 6px;
+    }
+    
+    .card-btn {
+      background: rgba(0,0,0,0.3);
+      border: none;
+      border-radius: 4px;
+      width: 24px;
+      height: 24px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      font-size: 14px;
     }
 
     .footer{
@@ -294,7 +325,7 @@
       background:var(--panel-2);
       padding:30px;
       border-radius:12px;
-      max-width:400px;
+      max-width:500px;
       width:90%;
       box-shadow:var(--shadow);
       display:flex;
@@ -302,6 +333,8 @@
       gap:15px;
       border: 2px solid rgba(255,255,255,0.3);
       animation: modalAppear 0.3s ease-out;
+      max-height: 90vh;
+      overflow-y: auto;
     }
     
     @keyframes modalAppear {
@@ -384,6 +417,7 @@
       background:var(--panel-2);
       border-radius:var(--radius);
       padding:15px;
+      height: 250px;
     }
     
     .chart-title {
@@ -447,6 +481,22 @@
       margin-bottom: 25px;
       padding: 20px;
       box-shadow: var(--shadow);
+      position: relative;
+    }
+    
+    .release-actions {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      display: flex;
+      gap: 10px;
+    }
+    
+    .release-btn {
+      padding: 6px 12px;
+      font-size: 14px;
+      border-radius: 6px;
+      cursor: pointer;
     }
     
     .release-header {
@@ -456,6 +506,7 @@
       padding-bottom: 15px;
       border-bottom: 2px solid rgba(255,255,255,0.1);
       margin-bottom: 15px;
+      padding-right: 150px;
     }
     
     .release-title {
@@ -480,12 +531,22 @@
       justify-content: space-between;
       align-items: center;
       transition: all 0.3s ease;
+      cursor: grab;
     }
     
     .task-item.updating {
       opacity: 0.7;
       transform: scale(0.98);
       pointer-events: none;
+    }
+    
+    .task-item.dragging {
+      opacity: 0.6;
+    }
+    
+    .drop-zone-active {
+      background: rgba(122, 162, 255, 0.1);
+      border: 2px dashed var(--accent);
     }
     
     .task-info {
@@ -599,6 +660,22 @@
     #loginForm .button-group button {
       flex: 1;
     }
+    
+    .modal-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: flex-end;
+      margin-top: 15px;
+    }
+    
+    .delete-btn {
+      background: var(--bad);
+      color: white;
+      border: none;
+      border-radius: 6px;
+      padding: 8px 16px;
+      cursor: pointer;
+    }
   </style>
 </head>
 <body>
@@ -679,20 +756,25 @@
     <div class="modal-content">
       <h3>Edit Task</h3>
       <input id="mTitle" placeholder="Title"/>
-      <input id="mRelease" placeholder="Release version"/>
+      <select id="mRelease">
+        <option value="">Select Release</option>
+      </select>
       <input id="mAssignee" placeholder="Assignee"/>
       <select id="mPriority">
-        <option>Low</option>
-        <option>Medium</option>
-        <option>High</option>
-        <option>Critical</option>
+        <option value="Low">Low</option>
+        <option value="Medium">Medium</option>
+        <option value="High">High</option>
+        <option value="Critical">Critical</option>
       </select>
       <input id="mLink" placeholder="Link (Jira/Task URL)"/>
       <textarea id="mDescription" placeholder="Description"></textarea>
       <input id="mTags" placeholder="Tags (comma separated)"/>
-      <div style="display:flex;gap:10px;justify-content:flex-end;">
-        <button id="mSave" class="primary">Save</button>
-        <button id="mCancel" class="secondary">Cancel</button>
+      <div class="modal-actions">
+        <button id="mDelete" class="delete-btn">Delete Task</button>
+        <div style="display:flex;gap:10px;">
+          <button id="mCancel" class="secondary">Cancel</button>
+          <button id="mSave" class="primary">Save</button>
+        </div>
       </div>
     </div>
   </div>
@@ -748,6 +830,7 @@
     let chart;
     let editingId = null;
     let currentUser = null;
+    let realtimeChannel = null;
 
     // Сбор элементов DOM
     const els = {
@@ -775,6 +858,7 @@
       mTags: document.getElementById('mTags'),
       mSave: document.getElementById('mSave'),
       mCancel: document.getElementById('mCancel'),
+      mDelete: document.getElementById('mDelete'),
       releaseDateDisplay: document.getElementById('releaseDateDisplay'),
       storeDateDisplay: document.getElementById('storeDateDisplay'),
       releaseDays: document.getElementById('releaseDays'),
@@ -793,6 +877,34 @@
       loginForm: document.getElementById('loginForm')
     };
 
+    // ==================== ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ ====================
+    
+    // Экранирование HTML для предотвращения XSS
+    function escapeHtml(text) {
+      const div = document.createElement('div');
+      div.textContent = text;
+      return div.innerHTML;
+    }
+    
+    // Экранирование атрибутов для предотвращения XSS
+    function escapeAttr(value) {
+      return String(value).replace(/"/g, '&quot;');
+    }
+    
+    // Форматирование даты в DD-MM-YYYY
+    function fmtDateDDMMYYYY(dateString) {
+      if (!dateString) return 'No date';
+      
+      const date = new Date(dateString);
+      if (isNaN(date.getTime())) return 'Invalid date';
+      
+      const day = String(date.getDate()).padStart(2, '0');
+      const month = String(date.getMonth() + 1).padStart(2, '0');
+      const year = date.getFullYear();
+      
+      return `${day}-${month}-${year}`;
+    }
+    
     // ==================== АУТЕНТИФИКАЦИЯ ====================
     async function checkSession() {
       try {
@@ -811,7 +923,7 @@
           els.logoutBtn.style.display = 'block';
           await initApp();
         } else {
-          console.log('Активная сессия не найдена');
+          console.log('Активная сессии не найдена');
           showLoginModal();
         }
       } catch (error) {
@@ -868,6 +980,21 @@
       if (els.themeBtn) els.themeBtn.addEventListener('click', toggleTheme);
       if (els.mSave) els.mSave.addEventListener('click', saveTask);
       if (els.mCancel) els.mCancel.addEventListener('click', closeModal);
+      if (els.mDelete) els.mDelete.addEventListener('click', deleteTask);
+      
+      // Live-поиск
+      if (els.search) {
+        els.search.addEventListener('input', () => {
+          render();
+        });
+      }
+      
+      // Закрытие модального окна по Esc
+      document.addEventListener('keydown', (e) => {
+        if (e.key === 'Escape') {
+          closeModal();
+        }
+      });
     }
 
     async function login() {
@@ -1008,7 +1135,8 @@
       console.log('Загрузка релизов');
       const { data: releases, error } = await supabase
         .from('releases')
-        .select('*');
+        .select('*')
+        .order('version', { ascending: false });
       
       if (error) {
         console.error('Ошибка загрузки релизов:', error);
@@ -1082,7 +1210,10 @@
     function initReleases() {
       console.log('Инициализация релизов в UI');
       els.filterRelease.innerHTML = '<option value="">Select Release</option>';
+      els.mRelease.innerHTML = '<option value="">Select Release</option>';
+      
       Object.keys(data.releases).forEach(release => {
+        // Для фильтра релизов
         const option = document.createElement('option');
         option.value = release;
         option.textContent = release;
@@ -1090,6 +1221,12 @@
           option.selected = true;
         }
         els.filterRelease.appendChild(option);
+        
+        // Для выбора релиза в редакторе
+        const editorOption = document.createElement('option');
+        editorOption.value = release;
+        editorOption.textContent = release;
+        els.mRelease.appendChild(editorOption);
       });
       
       // Обновляем даты для текущего релиза
@@ -1255,7 +1392,9 @@
         },
         options: {
           plugins: { legend: { display: false } },
-          scales: { y: { beginAtZero: true } }
+          scales: { y: { beginAtZero: true } },
+          maintainAspectRatio: false,
+          responsive: true
         }
       });
     }
@@ -1266,8 +1405,8 @@
       if (!currentRelease) return;
       
       // Обновляем отображение дат
-      els.releaseDateDisplay.textContent = currentRelease.releaseDate || "Не установлена";
-      els.storeDateDisplay.textContent = currentRelease.storeDate || "Не установлена";
+      els.releaseDateDisplay.textContent = fmtDateDDMMYYYY(currentRelease.releaseDate);
+      els.storeDateDisplay.textContent = fmtDateDDMMYYYY(currentRelease.storeDate);
       
       // Рассчитываем количество дней до событий
       const today = new Date();
@@ -1333,7 +1472,10 @@
       
       el.addEventListener('dragstart', e => {
         el.classList.add('dragging');
-        e.dataTransfer.setData('text/plain', it.id);
+        e.dataTransfer.setData('text/plain', JSON.stringify({
+          id: it.id,
+          releaseId: it.release
+        }));
       });
       
       el.addEventListener('dragend', () => el.classList.remove('dragging'));
@@ -1351,14 +1493,17 @@
       const tags = Array.isArray(it.tags) ? it.tags : [];
       
       el.innerHTML = `
+        <div class="card-actions">
+          <button class="card-btn" onclick="event.stopPropagation(); deleteTask('${it.id}')">🗑️</button>
+        </div>
         <div>
           <span class="priority ${prioClass}"></span>
-          <b>${it.title}</b> 
-          ${it.link ? `<a href="${it.link}" target="_blank">🔗</a>` : ''}
+          <b>${escapeHtml(it.title)}</b> 
+          ${it.link ? `<a href="${escapeAttr(it.link)}" target="_blank">🔗</a>` : ''}
         </div>
-        <div>${it.assignee || ''} | Release: ${it.releaseVersion || 'N/A'}</div>
-        ${it.description ? `<div>${it.description}</div>` : ''}
-        ${tags.length ? `<div class="tags">${tags.map(t => `<span class=tag>${t}</span>`).join('')}</div>` : ''}
+        <div>${escapeHtml(it.assignee || '')} | Release: ${escapeHtml(it.releaseVersion || 'N/A')}</div>
+        ${it.description ? `<div>${escapeHtml(it.description)}</div>` : ''}
+        ${tags.length ? `<div class="tags">${tags.map(t => `<span class=tag>${escapeHtml(t)}</span>`).join('')}</div>` : ''}
       `;
       
       return el;
@@ -1367,7 +1512,8 @@
     // Обработка перетаскивания
     async function onDrop(e){
       e.preventDefault();
-      const id = e.dataTransfer.getData('text/plain');
+      const dragData = JSON.parse(e.dataTransfer.getData('text/plain'));
+      const id = dragData.id;
       const currentRelease = data.releases[data.currentRelease];
       const it = currentRelease.items.find(x => x.id == id);
       
@@ -1452,7 +1598,17 @@
       const currentRelease = data.releases[data.currentRelease];
       if (!currentRelease) return;
       
-      const it = currentRelease.items.find(x => x.id == id);
+      // Находим задачу во всех релизах
+      let it = null;
+      for (const version in data.releases) {
+        const release = data.releases[version];
+        const task = release.items.find(x => x.id == id);
+        if (task) {
+          it = task;
+          break;
+        }
+      }
+      
       if (!it) return;
       
       editingId = id;
@@ -1473,11 +1629,11 @@
     // Сохранение задачи
     async function saveTask() {
       try {
-        const currentRelease = data.releases[data.currentRelease];
-        if (!currentRelease) return;
-        
-        const it = currentRelease.items.find(x => x.id == editingId);
+        const it = await findTaskById(editingId);
         if (!it) return;
+        
+        const oldReleaseVersion = it.releaseVersion;
+        const newReleaseVersion = els.mRelease.value;
         
         // Обновляем данные задачи
         it.title = els.mTitle.value;
@@ -1486,6 +1642,23 @@
         it.description = els.mDescription.value;
         it.link = els.mLink.value;
         it.tags = els.mTags.value.split(',').map(x => x.trim()).filter(Boolean);
+        
+        // Если изменился релиз, перемещаем задачу
+        if (oldReleaseVersion !== newReleaseVersion) {
+          const oldRelease = data.releases[oldReleaseVersion];
+          const newRelease = data.releases[newReleaseVersion];
+          
+          if (oldRelease && newRelease) {
+            // Удаляем из старого релиза
+            oldRelease.items = oldRelease.items.filter(x => x.id != editingId);
+            
+            // Добавляем в новый релиз
+            it.release = newRelease.id;
+            it.releaseVersion = newReleaseVersion;
+            it.release_id = newRelease.id;
+            newRelease.items.push(it);
+          }
+        }
         
         // Обновляем задачу в Supabase
         await supabase
@@ -1496,20 +1669,81 @@
             priority: it.priority,
             description: it.description,
             link: it.link,
-            tags: it.tags
+            tags: it.tags,
+            release_id: it.release_id
           })
           .eq('id', it.id);
         
         closeModal();
         render();
+        if (els.backlogView.style.display === 'block') {
+          renderBacklog();
+        }
       } catch (error) {
         console.error('Ошибка сохранения:', error);
         alert('Ошибка сохранения задачи: ' + error.message);
       }
     }
 
+    // Удаление задачи
+    async function deleteTask(id = null) {
+      const taskId = id || editingId;
+      if (!taskId) return;
+      
+      if (!confirm('Вы уверены, что хотите удалить эту задачу?')) {
+        return;
+      }
+      
+      try {
+        // Удаляем из Supabase
+        const { error } = await supabase
+          .from('tasks')
+          .delete()
+          .eq('id', taskId);
+        
+        if (error) throw error;
+        
+        // Удаляем из локальных данных
+        for (const version in data.releases) {
+          const release = data.releases[version];
+          release.items = release.items.filter(x => x.id != taskId);
+        }
+        
+        if (id) {
+          // Если удаление вызвано из карточки
+          render();
+          if (els.backlogView.style.display === 'block') {
+            renderBacklog();
+          }
+        } else {
+          // Если удаление вызвано из редактора
+          closeModal();
+          render();
+          if (els.backlogView.style.display === 'block') {
+            renderBacklog();
+          }
+        }
+      } catch (error) {
+        console.error('Ошибка удаления:', error);
+        alert('Ошибка удаления задачи: ' + error.message);
+      }
+    }
+
+    // Поиск задачи по ID
+    async function findTaskById(id) {
+      for (const version in data.releases) {
+        const release = data.releases[version];
+        const task = release.items.find(x => x.id == id);
+        if (task) {
+          return task;
+        }
+      }
+      return null;
+    }
+
     function closeModal() {
       els.modal.style.display = 'none';
+      editingId = null;
     }
 
     // Экспорт в CSV
@@ -1663,7 +1897,12 @@
     
     // Режим реального времени
     function setupRealtime() {
-      const channel = supabase
+      // Отписываемся от предыдущего канала, если он существует
+      if (realtimeChannel) {
+        supabase.removeChannel(realtimeChannel);
+      }
+      
+      realtimeChannel = supabase
         .channel('tasks')
         .on('postgres_changes', {
           event: '*',
@@ -1673,6 +1912,11 @@
           console.log('Изменение получено:', payload);
           await loadTasks();
           render();
+          
+          // Если открыт бэклог, перерисовываем его тоже
+          if (els.backlogView.style.display === 'block') {
+            renderBacklog();
+          }
         })
         .subscribe();
     }
@@ -1709,14 +1953,19 @@
       sortedReleases.forEach(release => {
         const releaseGroup = document.createElement('div');
         releaseGroup.className = 'release-group';
+        releaseGroup.dataset.release = release.version;
         
         releaseGroup.innerHTML = `
           <div class="release-header">
             <div class="release-title">Release ${release.version}</div>
             <div class="release-dates">
-              <span>📅 ${release.releaseDate || 'No date'}</span>
-              <span>📦 ${release.storeDate || 'No date'}</span>
+              <span>📅 ${fmtDateDDMMYYYY(release.releaseDate)}</span>
+              <span>📦 ${fmtDateDDMMYYYY(release.storeDate)}</span>
             </div>
+          </div>
+          <div class="release-actions">
+            <button class="release-btn primary" onclick="renameRelease('${release.version}')">Rename</button>
+            <button class="release-btn danger" onclick="deleteRelease('${release.version}')">Delete</button>
           </div>
           <div class="tasks-list"></div>
         `;
@@ -1728,21 +1977,22 @@
           const taskItem = document.createElement('div');
           taskItem.className = 'task-item';
           taskItem.dataset.id = task.id;
+          taskItem.draggable = true;
           
           // Исправление: гарантируем что tags - массив
-          const tags = Array.isArray(task.tags) ? it.tags : [];
+          const tags = Array.isArray(task.tags) ? task.tags : [];
           
           taskItem.innerHTML = `
             <div class="task-info">
-              <div class="task-title">${task.title}</div>
-              <div>${task.assignee || 'Unassigned'} | Release: ${release.version}</div>
-              ${task.description ? `<div>${task.description}</div>` : ''}
+              <div class="task-title">${escapeHtml(task.title)}</div>
+              <div>${escapeHtml(task.assignee || 'Unassigned')} | Release: ${release.version}</div>
+              ${task.description ? `<div>${escapeHtml(task.description)}</div>` : ''}
               ${tags.length ? `
                 <div class="tags">
-                  ${tags.map(tag => `<span class="tag">${tag}</span>`).join('')}
+                  ${tags.map(tag => `<span class="tag">${escapeHtml(tag)}</span>`).join('')}
                 </div>
               ` : ''}
-              ${task.link ? `<a href="${task.link}" class="task-link" target="_blank">View details</a>` : ''}
+              ${task.link ? `<a href="${escapeAttr(task.link)}" class="task-link" target="_blank">View details</a>` : ''}
             </div>
             <div class="task-status">
               <select class="status-selector" data-id="${task.id}">
@@ -1753,7 +2003,73 @@
             </div>
           `;
           
+          // Обработчики для drag & drop
+          taskItem.addEventListener('dragstart', (e) => {
+            taskItem.classList.add('dragging');
+            e.dataTransfer.setData('text/plain', JSON.stringify({
+              id: task.id,
+              releaseId: task.release
+            }));
+          });
+          
+          taskItem.addEventListener('dragend', () => {
+            taskItem.classList.remove('dragging');
+          });
+          
           tasksList.appendChild(taskItem);
+        });
+        
+        // Обработчики для зоны дропа
+        tasksList.addEventListener('dragover', (e) => {
+          e.preventDefault();
+          tasksList.classList.add('drop-zone-active');
+        });
+        
+        tasksList.addEventListener('dragleave', () => {
+          tasksList.classList.remove('drop-zone-active');
+        });
+        
+        tasksList.addEventListener('drop', async (e) => {
+          e.preventDefault();
+          tasksList.classList.remove('drop-zone-active');
+          
+          const dragData = JSON.parse(e.dataTransfer.getData('text/plain'));
+          const taskId = dragData.id;
+          const oldReleaseId = dragData.releaseId;
+          
+          // Находим задачу
+          let task = null;
+          let oldRelease = null;
+          
+          for (const version in data.releases) {
+            const r = data.releases[version];
+            if (r.id === oldReleaseId) {
+              oldRelease = r;
+              task = r.items.find(x => x.id == taskId);
+              break;
+            }
+          }
+          
+          if (!task || !oldRelease) return;
+          
+          // Удаляем задачу из старого релиза
+          oldRelease.items = oldRelease.items.filter(x => x.id != taskId);
+          
+          // Добавляем задачу в новый релиз
+          task.release = release.id;
+          task.release_id = release.id;
+          task.releaseVersion = release.version;
+          release.items.push(task);
+          
+          // Обновляем в Supabase
+          await supabase
+            .from('tasks')
+            .update({ release_id: release.id })
+            .eq('id', taskId);
+          
+          // Перерисовываем обе вьюхи
+          render();
+          renderBacklog();
         });
         
         // Если задач нет
@@ -1804,6 +2120,9 @@
               // Перезагружаем данные
               await loadTasks();
             }
+            
+            // Перерисовываем обе вьюхи
+            render();
           } catch (error) {
             console.error('Error updating task:', error);
             alert('Error updating task: ' + error.message);
@@ -1815,12 +2134,111 @@
       });
     }
 
+    // Переименование релиза
+    async function renameRelease(version) {
+      const newVersion = prompt('Enter new release version:', version);
+      if (!newVersion || newVersion === version) return;
+      
+      if (data.releases[newVersion]) {
+        alert('Release with this version already exists!');
+        return;
+      }
+      
+      try {
+        const release = data.releases[version];
+        
+        // Обновляем в Supabase
+        const { error } = await supabase
+          .from('releases')
+          .update({ version: newVersion })
+          .eq('id', release.id);
+        
+        if (error) throw error;
+        
+        // Обновляем локальные данные
+        data.releases[newVersion] = {
+          ...release,
+          version: newVersion
+        };
+        
+        delete data.releases[version];
+        
+        // Обновляем задачи
+        for (const task of release.items) {
+          task.releaseVersion = newVersion;
+          
+          await supabase
+            .from('tasks')
+            .update({ release_version: newVersion })
+            .eq('id', task.id);
+        }
+        
+        // Перерисовываем
+        initReleases();
+        render();
+        renderBacklog();
+      } catch (error) {
+        console.error('Error renaming release:', error);
+        alert('Error renaming release: ' + error.message);
+      }
+    }
+
+    // Удаление релиза
+    async function deleteRelease(version) {
+      if (!confirm(`Are you sure you want to delete release ${version}? All tasks will be deleted too.`)) {
+        return;
+      }
+      
+      try {
+        const release = data.releases[version];
+        
+        // Удаляем все задачи релиза
+        for (const task of release.items) {
+          await supabase
+            .from('tasks')
+            .delete()
+            .eq('id', task.id);
+        }
+        
+        // Удаляем сам релиз
+        const { error } = await supabase
+          .from('releases')
+          .delete()
+          .eq('id', release.id);
+        
+        if (error) throw error;
+        
+        // Удаляем из локальных данных
+        delete data.releases[version];
+        
+        // Выбираем новый текущий релиз
+        if (Object.keys(data.releases).length > 0) {
+          data.currentRelease = Object.keys(data.releases)[0];
+        } else {
+          data.currentRelease = "";
+        }
+        
+        // Перерисовываем
+        initReleases();
+        render();
+        renderBacklog();
+      } catch (error) {
+        console.error('Error deleting release:', error);
+        alert('Error deleting release: ' + error.message);
+      }
+    }
+
     // Инициализация приложения
     document.addEventListener('DOMContentLoaded', () => {
       console.log('DOM загружен');
       initEventHandlers();
       checkSession();
     });
+    
+    // Делаем функции глобальными для обработчиков событий в HTML
+    window.deleteTask = deleteTask;
+    window.renameRelease = renameRelease;
+    window.deleteRelease = deleteRelease;
   })();
   </script>
 </body>
