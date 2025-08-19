@@ -1893,10 +1893,22 @@
     // Экспорт в CSV
     async function exportCSV() {
       try {
-        const currentRelease = data.releases[data.currentRelease];
-        if (!currentRelease) return;
+        // Проверка выбранного релиза
+        if (!data.currentRelease || !data.releases[data.currentRelease]) {
+          alert("Пожалуйста, выберите релиз для экспорта");
+          return;
+        }
         
+        const currentRelease = data.releases[data.currentRelease];
         const items = currentRelease.items || [];
+        
+        if (items.length === 0) {
+          alert("В выбранном релизе нет задач для экспорта");
+          return;
+        }
+        
+        console.log(`Экспортируем ${items.length} задач из релиза ${currentRelease.version}`);
+        
         const rows = [["title","release","status","assignee","priority","link","tags","description"]];
         
         items.forEach(it => {
@@ -1920,8 +1932,12 @@
         const blob = new Blob([csv], {type: 'text/csv;charset=utf-8;'});
         const a = document.createElement('a');
         a.href = URL.createObjectURL(blob);
-        a.download = `release_${data.currentRelease}_plan.csv`;
+        a.download = `release_${currentRelease.version}_plan.csv`;
         a.click();
+        
+        console.log(`Экспорт завершен: ${items.length} задач сохранены в CSV`);
+        alert(`Экспорт завершен! ${items.length} задач сохранены в файл release_${currentRelease.version}_plan.csv`);
+        
       } catch (error) {
         console.error('Ошибка экспорта:', error);
         alert('Ошибка экспорта: ' + error.message);
@@ -1933,26 +1949,52 @@
       if (!e.target.files[0]) return;
       
       try {
-        const file = e.target.files[0];
-        const text = await readFile(file);
+        // Проверка аутентификации
+        const { data: { user }, error: userError } = await supabase.auth.getUser();
+        if (!user || userError) {
+          alert("Пожалуйста, войдите в систему для импорта данных");
+          return;
+        }
+        
+        // Проверка выбранного релиза
+        if (!data.currentRelease || !data.releases[data.currentRelease]) {
+          alert("Пожалуйста, выберите релиз для импорта задач");
+          return;
+        }
         
         const currentRelease = data.releases[data.currentRelease];
-        if (!currentRelease) return;
+        console.log('Импорт в релиз:', currentRelease.version);
+        
+        const file = e.target.files[0];
+        console.log('Файл для импорта:', file.name, 'размер:', file.size, 'байт');
+        
+        const text = await readFile(file);
+        console.log('Файл прочитан, длина:', text.length);
         
         const lines = text.split(/\r?\n/).filter(Boolean);
-        if (lines.length < 2) return;
+        console.log('Количество строк в CSV:', lines.length);
+        
+        if (lines.length < 2) {
+          alert('CSV файл должен содержать заголовок и хотя бы одну строку данных');
+          return;
+        }
         
         const header = lines[0].split(',').map(h => h.replace(/^"|"$/g, '').trim());
+        console.log('Заголовки CSV:', header);
+        
         const items = [];
         
         for (let i = 1; i < lines.length; i++) {
           const line = lines[i];
           const values = parseCSVLine(line);
-          if (values.length !== header.length) continue;
+          if (values.length !== header.length) {
+            console.warn(`Строка ${i + 1} пропущена: неверное количество колонок`);
+            continue;
+          }
           
           const obj = {};
           header.forEach((key, index) => {
-            obj[key] = values[index].replace(/^"|"$/g, '');
+            obj[key] = values[index].replace(/^"|"$/g, '').trim();
           });
           
           // Преобразование тегов
@@ -1965,34 +2007,70 @@
           items.push(obj);
         }
         
+        console.log('Обработано задач для импорта:', items.length);
+        
+        if (items.length === 0) {
+          alert('Не найдено задач для импорта в CSV файле');
+          return;
+        }
+        
+        // Показываем прогресс
+        const progressMsg = `Импортируем ${items.length} задач в релиз ${currentRelease.version}...`;
+        console.log(progressMsg);
+        
+        let importedCount = 0;
+        let errorCount = 0;
+        
         // Добавляем задачи в текущий релиз
         for (const item of items) {
-          const newTask = {
-            title: item.title,
-            release_id: currentRelease.id,
-            status: item.status || 'ready',
-            assignee: item.assignee || '',
-            priority: item.priority || 'Low',
-            description: item.description || '',
-            link: item.link || '',
-            tags: item.tags || []
-          };
-          
-          const { data: createdTask, error } = await supabase
-            .from('tasks')
-            .insert(newTask)
-            .select();
-          
-          if (!error && createdTask && createdTask.length > 0) {
-            currentRelease.items.push({
-              ...createdTask[0],
-              release: createdTask[0].release_id,
-              releaseVersion: currentRelease.version
-            });
+          try {
+            const newTask = {
+              title: item.title || 'Untitled Task',
+              release_id: currentRelease.id,
+              status: item.status || 'ready',
+              assignee: item.assignee || '',
+              priority: item.priority || 'Low',
+              description: item.description || '',
+              link: item.link || '',
+              tags: item.tags || [],
+              user_id: user.id
+            };
+            
+            console.log('Импортируем задачу:', newTask.title);
+            
+            const { data: createdTask, error } = await supabase
+              .from('tasks')
+              .insert(newTask)
+              .select();
+            
+            if (!error && createdTask && createdTask.length > 0) {
+              currentRelease.items.push({
+                ...createdTask[0],
+                release: createdTask[0].release_id,
+                releaseVersion: currentRelease.version
+              });
+              importedCount++;
+            } else {
+              console.error('Ошибка создания задачи:', error);
+              errorCount++;
+            }
+          } catch (taskError) {
+            console.error('Ошибка импорта задачи:', taskError);
+            errorCount++;
           }
         }
         
+        // Показываем результат
+        const resultMsg = `Импорт завершен! Успешно: ${importedCount}, Ошибок: ${errorCount}`;
+        console.log(resultMsg);
+        alert(resultMsg);
+        
+        // Перерисовываем интерфейс
         render();
+        if (els.backlogView.style.display === 'block') {
+          renderBacklog();
+        }
+        
       } catch (error) {
         console.error('Ошибка импорта:', error);
         alert('Ошибка импорта: ' + error.message);
